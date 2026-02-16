@@ -1,0 +1,8 @@
+# Project Python dependencies
+
+tqdm>=4.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+# torch --index-url https://download.pytorch.org/whl/cu130
+# torchvision --index-url https://download.pytorch.org/whl/cu130
+torchmetrics
