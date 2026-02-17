@@ -1,8 +1,17 @@
-# Project Python dependencies
 
+# Recommended Python version: 3.11
+# Note: PyTorch wheels are distributed separately; install the appropriate wheel for your CUDA version.
+# Example:
+#   pip install --index-url https://download.pytorch.org/whl/cu130 torch torchvision torchaudio
+# CPU-only example:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision torchaudio
+
+# Core Python packages
 tqdm>=4.0.0
 pandas>=2.0.0
 numpy>=1.24.0
-# torch --index-url https://download.pytorch.org/whl/cu130
-# torchvision --index-url https://download.pytorch.org/whl/cu130
+# PyTorch (install wheel using one of the commented commands above)
+# Additional (preserved from previous requirements.txt)
 torchmetrics
+kagglehub
+ipywidgets
