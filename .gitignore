@@ -154,3 +154,4 @@ tmp/
 
 # Models
 baseline/models/
+baseline/models/*
