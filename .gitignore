@@ -29,7 +29,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -154,4 +153,4 @@ notebook/templates/*.html
 tmp/
 
 # Models
-*/models/*
+baseline/models/*
