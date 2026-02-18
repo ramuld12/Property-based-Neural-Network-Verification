@@ -153,4 +153,4 @@ notebook/templates/*.html
 tmp/
 
 # Models
-baseline/models/*
+baseline/models/
