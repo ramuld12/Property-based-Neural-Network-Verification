@@ -155,4 +155,4 @@ tmp/
 # Models
 baseline/models/
 
-data/
+data/CICIoT2023/*.csv
