@@ -156,3 +156,8 @@ tmp/
 baseline/models/
 
 data/CICIoT2023/*.csv
+/data/CICIDS2017/Friday-WorkingHours.pcap
+/data/CICIDS2017/Monday-WorkingHours.pcap
+/data/CICIDS2017/Thursday-WorkingHours.pcap
+/data/CICIDS2017/Tuesday-WorkingHours.pcap
+/data/CICIDS2017/Wednesday-workingHours.pcap
