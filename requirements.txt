@@ -12,9 +12,11 @@ pandas>=2.0.0
 numpy>=1.24.0
 # PyTorch (install wheel using one of the commented commands above)
 # Additional (preserved from previous requirements.txt)
-kagglehub
+kagglehub~=1.0.0
 ipywidgets
 scikit-learn
 matplotlib
 joblib
 seaborn
+yaml~=0.2.5
+pyyaml~=6.0.3
