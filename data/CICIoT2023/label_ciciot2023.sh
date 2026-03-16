@@ -3,12 +3,11 @@ set -euo pipefail
 
 PCAP_DIR="pcaps"
 OUT_DIR="zeek_logs"
-FINAL_CSV="ciciot2023_labeled_conn.csv"
+FINAL_CSV="ciciot2023_labeled_conn.tsv"
 
 mkdir -p "$OUT_DIR"
 
-# Final merged CSV header
-echo "ts,uid,id.orig_h,id.orig_p,id.resp_h,id.resp_p,proto,service,conn_state,duration,orig_bytes,resp_bytes,orig_pkts,resp_pkts,missed_bytes,label" > "$FINAL_CSV"
+header_written=false
 
 for pcap in "$PCAP_DIR"/*.pcap; do
     fname=$(basename "$pcap")
@@ -28,23 +27,23 @@ for pcap in "$PCAP_DIR"/*.pcap; do
 
     echo "Processing $fname -> label=$label"
 
-    # Run Zeek inside a separate folder so logs do not overwrite each other
     (
         cd "$workdir"
         zeek -C -r "../../$pcap"
     )
 
-    # Skip if conn.log was not produced
-    if [[ ! -f "$workdir/conn.log" ]]; then
-        echo "Warning: no conn.log for $fname"
-        continue
+    conn="$workdir/conn.log"
+
+    # Write header only once
+    if [ "$header_written" = false ]; then
+        header=$(grep '^#fields' "$conn" | cut -f2-)
+        echo -e "${header}\tlabel" > "$FINAL_CSV"
+        header_written=true
     fi
 
-    # Extract selected fields and append label + source file
-    zeek-cut ts uid id.orig_h id.orig_p id.resp_h id.resp_p proto service conn_state duration orig_bytes resp_bytes orig_pkts resp_pkts missed_bytes < "$workdir/conn.log" \
-    | while IFS=$'\t' read -r ts uid orig_h orig_p resp_h resp_p proto service conn_state duration orig_bytes resp_bytes orig_pkts resp_pkts missed_bytes; do
-        echo "$ts,$uid,$orig_h,$orig_p,$resp_h,$resp_p,$proto,$service,$conn_state,$duration,$orig_bytes,$resp_bytes,$orig_pkts,$resp_pkts,$missed_bytes,$label"
-    done >> "$FINAL_CSV"
+    # Extract data rows and append label
+    grep -v '^#' "$conn" | awk -v lbl="$label" '{print $0"\t"lbl}' >> "$FINAL_CSV"
+
 done
 
 echo "Done. Output saved to $FINAL_CSV"

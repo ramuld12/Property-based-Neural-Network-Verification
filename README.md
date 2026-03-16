@@ -2,14 +2,22 @@
 
 
 # Generate dataset from PCAP files
-To generate the csv dataset from the PCAP files, run the following command:
+## CICIDS2017
+To generate the tsv dataset from the PCAP files, run the following command in the zeek_logs folder:
 
 ```bash
-zeek -r pcaps/Wednesday-workingHours.pcap
+zeek -C -r ./../pcaps/Wednesday-workingHours.pcap 
 ```
 Afterward convert it to a csv file using the following two commands:
 ```bash
-echo "ts,uid,id.orig_h,id.orig_p,id.resp_h,id.resp_p,proto,service,conn_state,duration,orig_bytes,resp_bytes,orig_pkts,resp_pkts,missed_bytes" > conn.csv
-zeek-cut ts uid id.orig_h id.orig_p id.resp_h id.resp_p proto service conn_state duration orig_bytes resp_bytes orig_pkts resp_pkts missed_bytes < conn.log | tr '\t' ',' >> conn.csv
+zeek-cut -m < conn.log >> conn.tsv
 ```
-Then all that is left is to run all cells i the Jupyter Notebook file
+Then all that is left is to run all cells i the [`labelling`](data/CICIDS2017/label_cicids2017.ipynb) Jupyter Notebook file
+
+## CICIoT2023
+Since we have more direct naming from filenames, here we just need to run the script provided in [label_ciciot2023.sh](data/CICIoT2023/label_ciciot2023.sh).
+
+Make sure to make it executable at first by running
+```bash
+chmod -X label_ciciot2023.sh
+```
