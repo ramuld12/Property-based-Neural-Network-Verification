@@ -1,6 +1,4 @@
 
-
-
 # Generate dataset from PCAP files
 ## CICIDS2017
 To generate the tsv dataset from the PCAP files, run the following command in the zeek_logs folder:
@@ -8,7 +6,7 @@ To generate the tsv dataset from the PCAP files, run the following command in th
 ```bash
 zeek -C -r ./../pcaps/Wednesday-workingHours.pcap 
 ```
-Afterward convert it to a csv file using the following two commands:
+Afterward convert it to a tsv file using the following two commands:
 ```bash
 zeek-cut -m < conn.log >> conn.tsv
 ```
