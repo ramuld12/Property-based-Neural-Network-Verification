@@ -163,3 +163,4 @@ data/CICIoT2023/zeek_logs/
 data/CICIDS2017/zeek_logs/
 data/CICIoT2023/*.tsv
 data/CICIDS2017/*.tsv
+wandb/

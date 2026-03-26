@@ -18,5 +18,5 @@ scikit-learn
 matplotlib
 joblib
 seaborn
-yaml~=0.2.5
 pyyaml~=6.0.3
+wandb>=0.25.0
