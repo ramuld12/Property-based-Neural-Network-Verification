@@ -1,5 +1,3 @@
-"""Neural network models for network traffic classification."""
-
 import torch
 import torch.nn as nn
 
