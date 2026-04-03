@@ -19,5 +19,4 @@ matplotlib
 joblib
 seaborn
 pyyaml~=6.0.3
-wandb>=0.25.0
 property-driven-ml

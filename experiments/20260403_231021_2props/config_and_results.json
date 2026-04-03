@@ -1,0 +1,222 @@
+{
+  "config": {
+    "dataset_path": "../data/CICIoT2023/ciciot2023_labeled_conn.tsv",
+    "num_features": 7,
+    "features": [
+      "duration",
+      "orig_bytes",
+      "resp_bytes",
+      "orig_pkts",
+      "resp_pkts",
+      "proto",
+      "conn_state"
+    ],
+    "num_samples": 1850844,
+    "num_train_samples": 479156,
+    "num_test_samples": 555254,
+    "label_distribution": {
+      "BENIGN": 239578,
+      "DOS_HTTP_FLOOD": 239578
+    },
+    "properties": [
+      {
+        "name": "LowBytes",
+        "feature_name": "orig_bytes",
+        "feature_idx": 1,
+        "theta": 100.0,
+        "theta_scaled": -0.8246623013891273
+      },
+      {
+        "name": "LowPackets",
+        "feature_name": "orig_pkts",
+        "feature_idx": 3,
+        "theta": 2.0,
+        "theta_scaled": -0.01846221881390555
+      }
+    ],
+    "lambda_prop": 0.5,
+    "learning_rate": 0.001,
+    "batch_size": 256,
+    "num_epochs": 10,
+    "test_size": 0.3,
+    "description": "CNNLSTM with property-based constraints",
+    "timestamp": "2026-04-03T23:10:21.574315"
+  },
+  "training": {
+    "epoch_metrics": [
+      {
+        "epoch": 0,
+        "pred_loss": 0.10576571636976531,
+        "prop_loss": 0.04719261402407518,
+        "total_loss": 0.12936202338180292,
+        "prop_stats": {
+          "antecedent": 0.26254600286483765,
+          "p_dos": 0.48918288946151733,
+          "LowBytes": 0.28567662835121155,
+          "LowPackets": 0.49284085631370544
+        }
+      },
+      {
+        "epoch": 1,
+        "pred_loss": 0.09318175642357136,
+        "prop_loss": 0.04661087437262201,
+        "total_loss": 0.11648719360988237,
+        "prop_stats": {
+          "antecedent": 0.26193368434906006,
+          "p_dos": 0.48447707295417786,
+          "LowBytes": 0.285997599363327,
+          "LowPackets": 0.49293437600135803
+        }
+      },
+      {
+        "epoch": 2,
+        "pred_loss": 0.08982783469120757,
+        "prop_loss": 0.04663423126320649,
+        "total_loss": 0.11314495032281081,
+        "prop_stats": {
+          "antecedent": 0.2836463451385498,
+          "p_dos": 0.5574818849563599,
+          "LowBytes": 0.30912652611732483,
+          "LowPackets": 0.4917026162147522
+        }
+      },
+      {
+        "epoch": 3,
+        "pred_loss": 0.08756967761422484,
+        "prop_loss": 0.04668355714052151,
+        "total_loss": 0.11091145618448559,
+        "prop_stats": {
+          "antecedent": 0.25454890727996826,
+          "p_dos": 0.49424707889556885,
+          "LowBytes": 0.27833276987075806,
+          "LowPackets": 0.4928196370601654
+        }
+      },
+      {
+        "epoch": 4,
+        "pred_loss": 0.08564774588279776,
+        "prop_loss": 0.04674435350606138,
+        "total_loss": 0.10901992263582845,
+        "prop_stats": {
+          "antecedent": 0.2997390031814575,
+          "p_dos": 0.5436908602714539,
+          "LowBytes": 0.3268294036388397,
+          "LowPackets": 0.4968689978122711
+        }
+      },
+      {
+        "epoch": 5,
+        "pred_loss": 0.08529921921475543,
+        "prop_loss": 0.04671787815845102,
+        "total_loss": 0.10865815829398094,
+        "prop_stats": {
+          "antecedent": 0.3118925392627716,
+          "p_dos": 0.5600766539573669,
+          "LowBytes": 0.33995676040649414,
+          "LowPackets": 0.49327367544174194
+        }
+      },
+      {
+        "epoch": 6,
+        "pred_loss": 0.08358387499808884,
+        "prop_loss": 0.04670486673931631,
+        "total_loss": 0.106936308367747,
+        "prop_stats": {
+          "antecedent": 0.26358672976493835,
+          "p_dos": 0.49980148673057556,
+          "LowBytes": 0.28744491934776306,
+          "LowPackets": 0.49395379424095154
+        }
+      },
+      {
+        "epoch": 7,
+        "pred_loss": 0.08381976565429702,
+        "prop_loss": 0.046699105059473306,
+        "total_loss": 0.10716931818403368,
+        "prop_stats": {
+          "antecedent": 0.2532457113265991,
+          "p_dos": 0.4775342345237732,
+          "LowBytes": 0.27603328227996826,
+          "LowPackets": 0.49156078696250916
+        }
+      },
+      {
+        "epoch": 8,
+        "pred_loss": 0.0827491980844026,
+        "prop_loss": 0.046753434983726874,
+        "total_loss": 0.10612591557626605,
+        "prop_stats": {
+          "antecedent": 0.2525162100791931,
+          "p_dos": 0.43801599740982056,
+          "LowBytes": 0.2786344885826111,
+          "LowPackets": 0.4955030679702759
+        }
+      },
+      {
+        "epoch": 9,
+        "pred_loss": 0.08171708504947969,
+        "prop_loss": 0.046773707305089146,
+        "total_loss": 0.10510393870202427,
+        "prop_stats": {
+          "antecedent": 0.24268922209739685,
+          "p_dos": 0.46722763776779175,
+          "LowBytes": 0.2644510567188263,
+          "LowPackets": 0.49590596556663513
+        }
+      }
+    ],
+    "final_pred_loss": 0.08171708504947969,
+    "final_prop_loss": 0.046773707305089146,
+    "final_total_loss": 0.10510393870202427
+  },
+  "evaluation": {
+    "accuracy": 0.9461327608625962,
+    "precision": 0.8907727125262243,
+    "recall": 0.9538052594278369,
+    "f1": 0.9175364117897044,
+    "confusion_matrix": [
+      [
+        99184,
+        3493
+      ],
+      [
+        26417,
+        426160
+      ]
+    ],
+    "classification_report": {
+      "BENIGN": {
+        "precision": 0.7896752414391606,
+        "recall": 0.9659806967480545,
+        "f1-score": 0.868975547358922,
+        "support": 102677.0
+      },
+      "DOS_HTTP_FLOOD": {
+        "precision": 0.9918701836132879,
+        "recall": 0.9416298221076193,
+        "f1-score": 0.9660972762204867,
+        "support": 452577.0
+      },
+      "accuracy": 0.9461327608625962,
+      "macro avg": {
+        "precision": 0.8907727125262243,
+        "recall": 0.9538052594278369,
+        "f1-score": 0.9175364117897044,
+        "support": 555254.0
+      },
+      "weighted avg": {
+        "precision": 0.9544805023545975,
+        "recall": 0.9461327608625962,
+        "f1-score": 0.9481376257644453,
+        "support": 555254.0
+      }
+    },
+    "test_prop_loss": 0.019007026457997865,
+    "test_prop_stats": {
+      "antecedent": 0.3870500486968411,
+      "p_dos": 0.7774148464861496,
+      "LowBytes": 0.42617584443882683,
+      "LowPackets": 0.4945233837456115
+    }
+  }
+}
