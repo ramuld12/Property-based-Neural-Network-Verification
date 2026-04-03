@@ -153,6 +153,14 @@ notebook/templates/*.html
 tmp/
 
 # Models
-baseline/models/
+*/models/
 
+# Ignore pcap files
+*.pcap
 data/CICIoT2023/*.csv
+
+data/CICIoT2023/zeek_logs/
+data/CICIDS2017/zeek_logs/
+data/CICIoT2023/*.tsv
+data/CICIDS2017/*.tsv
+wandb/
