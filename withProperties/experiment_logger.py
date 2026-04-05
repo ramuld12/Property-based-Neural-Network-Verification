@@ -166,6 +166,20 @@ class ExperimentLogger:
         if test_prop_stats is not None:
             self.eval_metrics["test_prop_stats"] = test_prop_stats
     
+    def save_confusion_matrix_image(self, figure) -> Path:
+        """Save confusion matrix visualization to PNG.
+        
+        Args:
+            figure: Matplotlib figure object with confusion matrix plot
+            
+        Returns:
+            Path to saved PNG file
+        """
+        cm_path = self.experiment_dir / "confusion_matrix.png"
+        figure.savefig(cm_path, dpi=100, bbox_inches='tight')
+        print(f"Confusion matrix saved to: {cm_path}")
+        return cm_path
+    
     def save_experiment(self) -> Path:
         """Save complete experiment config and results to JSON.
         

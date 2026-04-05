@@ -152,8 +152,9 @@ notebook/templates/*.html
 # Temporary files used for testing
 tmp/
 
-# Models
+# Models and experiments
 */models/
+experiments/
 
 # Ignore pcap files
 *.pcap

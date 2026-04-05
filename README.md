@@ -6,7 +6,7 @@ To generate the tsv dataset from the PCAP files, run the following command in th
 ```bash
 zeek -C -r ./../pcaps/Wednesday-workingHours.pcap 
 ```
-Afterward convert it to a tsv file using the following two commands:
+Afterward convert it to a tsv file using the following commands:
 ```bash
 zeek-cut -m < conn.log >> conn.tsv
 ```

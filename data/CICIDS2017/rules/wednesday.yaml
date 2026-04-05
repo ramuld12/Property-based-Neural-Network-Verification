@@ -9,6 +9,15 @@ attacks:
     victim_ips:
       - 192.168.10.50
 
+  - name: DoS_Slowhttptest
+    label: DOS_SLOWHTTPTEST
+    start: "10:14:00"
+    end: "10:35:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
   - name: DoS_Hulk
     label: DoS-HTTP_Flood
     start: "10:43:00"
@@ -26,3 +35,12 @@ attacks:
       - 172.16.0.1
     victim_ips:
       - 192.168.10.50
+
+  - name: Heartbleed
+    label: HEARTBLEED
+    start: "15:12:00"
+    end: "15:32:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.51
