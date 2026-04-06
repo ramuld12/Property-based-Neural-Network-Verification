@@ -180,6 +180,31 @@ class ExperimentLogger:
         print(f"Confusion matrix saved to: {cm_path}")
         return cm_path
     
+    @staticmethod
+    def _convert_to_native_types(obj: Any) -> Any:
+        """Recursively convert numpy types to native Python types for JSON serialization.
+        
+        Args:
+            obj: Object to convert (dict, list, numpy type, or primitive)
+            
+        Returns:
+            Object with all numpy types converted to Python native types
+        """
+        if isinstance(obj, dict):
+            return {key: ExperimentLogger._convert_to_native_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [ExperimentLogger._convert_to_native_types(item) for item in obj]
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (np.integer, np.int64, np.int32, np.int16, np.int8)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        else:
+            return obj
+    
     def save_experiment(self) -> Path:
         """Save complete experiment config and results to JSON.
         
@@ -206,7 +231,7 @@ class ExperimentLogger:
         # Save to JSON
         results_path = self.experiment_dir / "config_and_results.json"
         with open(results_path, "w") as f:
-            json.dump(results, f, indent=2)
+            json.dump(self._convert_to_native_types(results), f, indent=2)
         
         print(f"\nExperiment saved to: {results_path}")
         return results_path
@@ -232,3 +257,51 @@ class ExperimentLogger:
                 self.epoch_metrics[-1].prop_loss if self.epoch_metrics else None
             ),
         }
+
+
+def save_cross_dataset_evaluation(
+    experiment_folder: str,
+    tested_on: str,
+    accuracy: float,
+    classification_report: Dict[str, Dict[str, float]],
+    confusion_matrix: Optional[np.ndarray] = None,
+    experiments_dir: str = "experiments",
+) -> Path:
+    """Save cross-dataset evaluation results to an experiment folder.
+    
+    Saves evaluation results as a separate JSON file within the experiment folder
+    to track how a model trained on one dataset performs on another dataset.
+    
+    Args:
+        experiment_folder: Name of the experiment folder (e.g., "20260326_202534_2props")
+        tested_on: Name of the dataset this model was tested on (e.g., "cicids2017")
+        accuracy: Model accuracy on the tested dataset
+        classification_report: Scikit-learn classification report dict
+        confusion_matrix: Optional confusion matrix array
+        experiments_dir: Root directory containing experiments (default: "experiments")
+    
+    Returns:
+        Path to the saved JSON file
+    """
+    exp_dir = Path(experiments_dir) / experiment_folder
+    
+    if not exp_dir.exists():
+        raise ValueError(f"Experiment folder not found: {exp_dir}")
+    
+    # Prepare evaluation results
+    eval_results = {
+        "tested_on": tested_on,
+        "accuracy": accuracy,
+        "classification_report": classification_report,
+    }
+    
+    if confusion_matrix is not None:
+        eval_results["confusion_matrix"] = confusion_matrix.tolist()
+    
+    # Save to JSON file in experiment directory
+    results_path = exp_dir / f"cross_eval_on_{tested_on}.json"
+    with open(results_path, "w") as f:
+        json.dump(eval_results, f, indent=2)
+    
+    print(f"Cross-dataset evaluation saved to: {results_path}")
+    return results_path

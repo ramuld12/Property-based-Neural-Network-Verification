@@ -140,4 +140,16 @@ def load_and_evaluate_cnnlstm_model(
         y_pred = label_encoder.inverse_transform(y_pred)
 
     print(f"Evaluation for {model_name}:")
-    evaluate_model(y_true, y_pred, model_name=model_name)
+    class_report = evaluate_model(y_true, y_pred, model_name=model_name)
+    
+    # Compute confusion matrix and accuracy
+    cm = confusion_matrix(y_true.astype(str), y_pred.astype(str))
+    accuracy = np.mean(y_true.astype(str) == y_pred.astype(str))
+    
+    # Return results dictionary
+    return {
+        "predictions": y_pred,
+        "confusion_matrix": cm,
+        "accuracy": accuracy,
+        "classification_report": class_report,
+    }
