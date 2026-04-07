@@ -4,17 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-FEATURES = [
-    "duration",
-    "orig_bytes",
-    "resp_bytes",
-    "orig_pkts",
-    "resp_pkts",
-    "proto",
-    "conn_state",
-]
-
-
 def normalize_label_name(label: str) -> str:
     """Normalize label names by standardizing format.
     
@@ -32,8 +21,7 @@ def normalize_label_name(label: str) -> str:
         .upper()
     )
 
-
-def preprocess_data(datapath: str) -> pd.DataFrame:
+def load_and_preprocess_data(datapath: str) -> pd.DataFrame:
     """Load and preprocess data from TSV file.
     
     Args:
@@ -48,8 +36,6 @@ def preprocess_data(datapath: str) -> pd.DataFrame:
     # Remove duplicates and bad numeric values
     df.drop_duplicates(inplace=True)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
-
-    df = df[FEATURES + ["label"]].copy()
     df["label"] = df["label"].astype(str).map(normalize_label_name)
 
     df.dropna(inplace=True)
