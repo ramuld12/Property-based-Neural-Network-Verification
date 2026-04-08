@@ -36,8 +36,23 @@ def scaled_threshold(theta_raw: float, feature_name: str, scaler, feature_names:
     return (theta_raw - scaler.mean_[idx]) / scaler.scale_[idx]
 
 
+def target_dominates(probs: torch.Tensor, target_idx: int):
+    """
+    Returns:
+        p_target >= max(other_probs)
+    """
+    p_target = probs[:, target_idx]
+    other_indices = [i for i in range(probs.shape[1]) if i != target_idx]
+
+    if len(other_indices) == 0:
+        return torch.ones_like(p_target, dtype=torch.bool)
+
+    max_other = probs[:, other_indices].max(dim=1).values
+    return p_target >= max_other
+
+
 # ============================================================
-# VALIDITY MASKS
+# VALIDITY / DOS_HTTP_FLOOD MASKS
 # ============================================================
 
 def valid_input_mask(x: torch.Tensor):
@@ -47,38 +62,22 @@ def valid_input_mask(x: torch.Tensor):
 
 def valid_tcp_handshake_mask(x: torch.Tensor, feat_idx: dict[str, int]):
     feat = x.squeeze(1)
+    cond = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
 
-    proto_ok = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
-    if "proto" in feat_idx:
-        # After ordinal encoding, TCP should be a known non-negative value.
-        proto_ok = feat[:, feat_idx["proto"]] >= 0
-
-    history_ok = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
-    if "history" in feat_idx:
-        history_ok = feat[:, feat_idx["history"]] >= 0
-
-    conn_state_ok = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
-    if "conn_state" in feat_idx:
-        conn_state_ok = feat[:, feat_idx["conn_state"]] >= 0
-
-    orig_pkts_ok = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
     if "orig_pkts" in feat_idx:
-        orig_pkts_ok = feat[:, feat_idx["orig_pkts"]] > 0
+        cond = cond & (feat[:, feat_idx["orig_pkts"]] > 0)
 
-    resp_pkts_ok = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
     if "resp_pkts" in feat_idx:
-        resp_pkts_ok = feat[:, feat_idx["resp_pkts"]] > 0
+        cond = cond & (feat[:, feat_idx["resp_pkts"]] > 0)
 
-    return proto_ok & history_ok & conn_state_ok & orig_pkts_ok & resp_pkts_ok
+    return cond
 
 
 def valid_http_connection_mask(x: torch.Tensor, feat_idx: dict[str, int]):
-    feat = x.squeeze(1)
-
     if "service" not in feat_idx:
         return torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
 
-    # service has been ordinal encoded; known values are >= 0
+    feat = x.squeeze(1)
     return feat[:, feat_idx["service"]] >= 0
 
 
@@ -88,31 +87,21 @@ def valid_duration_mask(x: torch.Tensor, feat_idx: dict[str, int], min_dur: floa
     return (duration >= min_dur) & (duration <= max_dur)
 
 
-def valid_packet_size_mask(x: torch.Tensor, feat_idx: dict[str, int], min_orig_bytes: float = None):
+def valid_packet_size_mask(x: torch.Tensor, feat_idx: dict[str, int]):
     feat = x.squeeze(1)
-
     cond = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
 
     if "orig_bytes" in feat_idx:
         cond = cond & (feat[:, feat_idx["orig_bytes"]] >= 0)
-
     if "resp_bytes" in feat_idx:
         cond = cond & (feat[:, feat_idx["resp_bytes"]] >= 0)
-
     if "orig_pkts" in feat_idx:
         cond = cond & (feat[:, feat_idx["orig_pkts"]] > 0)
-
-    if min_orig_bytes is not None and "orig_bytes" in feat_idx:
-        cond = cond & (feat[:, feat_idx["orig_bytes"]] >= min_orig_bytes)
 
     return cond
 
 
 def valid_iat_mask(x: torch.Tensor, feat_idx: dict[str, int], max_pkt_rate: float):
-    """
-    Proxy for IAT validity:
-    if packet rate is absurdly large, IAT is implausibly small.
-    """
     feat = x.squeeze(1)
     return feat[:, feat_idx["orig_pkt_rate"]] <= max_pkt_rate
 
@@ -128,35 +117,60 @@ def mal_flood_rate_mask(x: torch.Tensor, feat_idx: dict[str, int], min_flood_rat
 
 
 # ============================================================
-# MAIN PROPERTY:
-# (ValidInput ∧ ValidTCPHandshake ∧ ValidHTTPConnection
-#  ∧ ValidDuration ∧ ValidPacketSize ∧ ValidIAT)
-# ∧ (malTimeElapsed ∨ malFloodRate)
-# => DOS_HTTP_FLOOD
+# PORTSCAN MASKS
+# ============================================================
+
+def many_ports_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_ports: float):
+    feat = x.squeeze(1)
+    return feat[:, feat_idx["uniqDstPorts"]] >= thr_ports
+
+
+def few_pkts_per_port_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_pkts_per_port: float):
+    feat = x.squeeze(1)
+    return feat[:, feat_idx["pktsPerPort"]] <= thr_pkts_per_port
+
+
+def scan_elapsed_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_scan_duration: float):
+    feat = x.squeeze(1)
+    return feat[:, feat_idx["scanDuration"]] <= thr_scan_duration
+
+
+def single_source_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_src_ips: float):
+    feat = x.squeeze(1)
+    return feat[:, feat_idx["uniqSrcIPs"]] <= thr_src_ips
+
+
+def scan_fail_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_fail_ratio: float):
+    feat = x.squeeze(1)
+    return feat[:, feat_idx["failRatio"]] >= thr_fail_ratio
+
+
+# ============================================================
+# DOS_HTTP_FLOOD PROPERTY
 # ============================================================
 
 class DOSHTTPFlood_MainRule(Postcondition):
     def __init__(
         self,
         feat_idx: dict[str, int],
+        target_idx: int,
         thr_min_duration: float,
         thr_max_duration: float,
         thr_max_pkt_rate_valid_iat: float,
         thr_max_time_elapsed: float,
         thr_min_flood_rate: float,
-        thr_min_orig_bytes_valid: float | None = None,
     ):
         self.feat_idx = feat_idx
+        self.target_idx = target_idx
         self.thr_min_duration = thr_min_duration
         self.thr_max_duration = thr_max_duration
         self.thr_max_pkt_rate_valid_iat = thr_max_pkt_rate_valid_iat
         self.thr_max_time_elapsed = thr_max_time_elapsed
         self.thr_min_flood_rate = thr_min_flood_rate
-        self.thr_min_orig_bytes_valid = thr_min_orig_bytes_valid
 
     def get_postcondition(self, N, x):
-        logits = N(x).view(-1)
-        p_dos = torch.sigmoid(logits)
+        logits = N(x)
+        probs = torch.softmax(logits, dim=1)
 
         valid_input = valid_input_mask(x)
         valid_tcp = valid_tcp_handshake_mask(x, self.feat_idx)
@@ -164,9 +178,7 @@ class DOSHTTPFlood_MainRule(Postcondition):
         valid_duration = valid_duration_mask(
             x, self.feat_idx, self.thr_min_duration, self.thr_max_duration
         )
-        valid_packet_size = valid_packet_size_mask(
-            x, self.feat_idx, self.thr_min_orig_bytes_valid
-        )
+        valid_packet_size = valid_packet_size_mask(x, self.feat_idx)
         valid_iat = valid_iat_mask(
             x, self.feat_idx, self.thr_max_pkt_rate_valid_iat
         )
@@ -177,6 +189,8 @@ class DOSHTTPFlood_MainRule(Postcondition):
         mal_flood_rate = mal_flood_rate_mask(
             x, self.feat_idx, self.thr_min_flood_rate
         )
+
+        dominates = target_dominates(probs, self.target_idx)
 
         def formula(logic):
             validity = logic.AND(
@@ -192,7 +206,61 @@ class DOSHTTPFlood_MainRule(Postcondition):
                 mal_flood_rate,
             )
             antecedent = logic.AND(validity, malicious_behavior)
-            consequent = logic.GEQ(p_dos, torch.full_like(p_dos, 0.5))
+            consequent = dominates
+            return logic.IMPL(antecedent, consequent)
+
+        return formula
+
+
+# ============================================================
+# PORTSCAN PROPERTY
+# ============================================================
+
+class PortScan_MainRule(Postcondition):
+    """
+    Your initial proposed OR-rule:
+    (manyPorts OR fewPktsPerPort OR scanElapsed OR singleSource OR scanFail)
+    => PortScan
+    """
+    def __init__(
+        self,
+        feat_idx: dict[str, int],
+        target_idx: int,
+        thr_ports: float,
+        thr_pkts_per_port: float,
+        thr_scan_duration: float,
+        thr_src_ips: float,
+        thr_fail_ratio: float,
+    ):
+        self.feat_idx = feat_idx
+        self.target_idx = target_idx
+        self.thr_ports = thr_ports
+        self.thr_pkts_per_port = thr_pkts_per_port
+        self.thr_scan_duration = thr_scan_duration
+        self.thr_src_ips = thr_src_ips
+        self.thr_fail_ratio = thr_fail_ratio
+
+    def get_postcondition(self, N, x):
+        logits = N(x)
+        probs = torch.softmax(logits, dim=1)
+
+        many_ports = many_ports_mask(x, self.feat_idx, self.thr_ports)
+        few_pkts = few_pkts_per_port_mask(x, self.feat_idx, self.thr_pkts_per_port)
+        short_scan = scan_elapsed_mask(x, self.feat_idx, self.thr_scan_duration)
+        single_src = single_source_mask(x, self.feat_idx, self.thr_src_ips)
+        high_fail = scan_fail_mask(x, self.feat_idx, self.thr_fail_ratio)
+
+        dominates = target_dominates(probs, self.target_idx)
+
+        def formula(logic):
+            antecedent = logic.OR(
+                many_ports,
+                few_pkts,
+                short_scan,
+                single_src,
+                high_fail,
+            )
+            consequent = dominates
             return logic.IMPL(antecedent, consequent)
 
         return formula
@@ -241,36 +309,62 @@ def build_properties(
     device: torch.device,
     scaler,
     feature_names: list[str],
+    label_encoder,
 ):
     feat_idx = get_feature_index_map(feature_names)
 
-    # Raw thresholds
+    dos_idx = int(label_encoder.transform(["DOS_HTTP_FLOOD"])[0])
+    portscan_idx = int(label_encoder.transform(["PORTSCAN"])[0])
+
+    # DOS_HTTP_FLOOD thresholds
     THR_MIN_DURATION = 0.0
     THR_MAX_DURATION = 60.0
     THR_MAX_VALID_PKT_RATE = 10000.0
     THR_MAX_TIME_ELAPSED = 1.0
     THR_MIN_FLOOD_RATE = 500.0
-    THR_MIN_ORIG_BYTES_VALID = 0.0
 
-    # Scale only thresholds tied to scaled features
-    thr_min_duration = scaled_threshold(THR_MIN_DURATION, "duration", scaler, feature_names)
-    thr_max_duration = scaled_threshold(THR_MAX_DURATION, "duration", scaler, feature_names)
-    thr_max_valid_pkt_rate = scaled_threshold(THR_MAX_VALID_PKT_RATE, "orig_pkt_rate", scaler, feature_names)
-    thr_max_time_elapsed = scaled_threshold(THR_MAX_TIME_ELAPSED, "time_elapsed", scaler, feature_names)
-    thr_min_flood_rate = scaled_threshold(THR_MIN_FLOOD_RATE, "flood_rate", scaler, feature_names)
-    thr_min_orig_bytes_valid = scaled_threshold(THR_MIN_ORIG_BYTES_VALID, "orig_bytes", scaler, feature_names)
+    dos_thr_min_duration = scaled_threshold(THR_MIN_DURATION, "duration", scaler, feature_names)
+    dos_thr_max_duration = scaled_threshold(THR_MAX_DURATION, "duration", scaler, feature_names)
+    dos_thr_max_valid_pkt_rate = scaled_threshold(THR_MAX_VALID_PKT_RATE, "orig_pkt_rate", scaler, feature_names)
+    dos_thr_max_time_elapsed = scaled_threshold(THR_MAX_TIME_ELAPSED, "time_elapsed", scaler, feature_names)
+    dos_thr_min_flood_rate = scaled_threshold(THR_MIN_FLOOD_RATE, "flood_rate", scaler, feature_names)
+
+    # PORTSCAN thresholds
+    THR_PORTS = 10.0
+    THR_PKTS_PER_PORT = 3.0
+    THR_SCAN_DURATION = 2.0
+    THR_SRC_IPS = 1.0
+    THR_FAIL_RATIO = 0.5
+
+    scan_thr_ports = scaled_threshold(THR_PORTS, "uniqDstPorts", scaler, feature_names)
+    scan_thr_pkts_per_port = scaled_threshold(THR_PKTS_PER_PORT, "pktsPerPort", scaler, feature_names)
+    scan_thr_scan_duration = scaled_threshold(THR_SCAN_DURATION, "scanDuration", scaler, feature_names)
+    scan_thr_src_ips = scaled_threshold(THR_SRC_IPS, "uniqSrcIPs", scaler, feature_names)
+    scan_thr_fail_ratio = scaled_threshold(THR_FAIL_RATIO, "failRatio", scaler, feature_names)
 
     constraints = [
         SimpleConstraint(
             device,
             DOSHTTPFlood_MainRule(
                 feat_idx=feat_idx,
-                thr_min_duration=thr_min_duration,
-                thr_max_duration=thr_max_duration,
-                thr_max_pkt_rate_valid_iat=thr_max_valid_pkt_rate,
-                thr_max_time_elapsed=thr_max_time_elapsed,
-                thr_min_flood_rate=thr_min_flood_rate,
-                thr_min_orig_bytes_valid=thr_min_orig_bytes_valid,
+                target_idx=dos_idx,
+                thr_min_duration=dos_thr_min_duration,
+                thr_max_duration=dos_thr_max_duration,
+                thr_max_pkt_rate_valid_iat=dos_thr_max_valid_pkt_rate,
+                thr_max_time_elapsed=dos_thr_max_time_elapsed,
+                thr_min_flood_rate=dos_thr_min_flood_rate,
+            ),
+        ),
+        SimpleConstraint(
+            device,
+            PortScan_MainRule(
+                feat_idx=feat_idx,
+                target_idx=portscan_idx,
+                thr_ports=scan_thr_ports,
+                thr_pkts_per_port=scan_thr_pkts_per_port,
+                thr_scan_duration=scan_thr_scan_duration,
+                thr_src_ips=scan_thr_src_ips,
+                thr_fail_ratio=scan_thr_fail_ratio,
             ),
         ),
     ]

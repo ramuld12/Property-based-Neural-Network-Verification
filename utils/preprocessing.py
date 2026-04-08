@@ -52,46 +52,68 @@ def load_ciciot2023_data() -> pd.DataFrame:
     return load_and_preprocess_data("../data/CICIoT2023/ciciot2023_labeled_conn.tsv")
 
 def load_and_preprocess_data(datapath: str) -> pd.DataFrame:
-    """Load and preprocess data from TSV file.
-    
-    Args:
-        datapath: Path to TSV file
-        
-    Returns:
-        Cleaned DataFrame with normalized labels
-    """
     df = pd.read_csv(datapath, on_bad_lines="skip", delimiter="\t")
     df.columns = df.columns.str.strip()
 
-    # Remove duplicates and bad numeric values
     df.drop_duplicates(inplace=True)
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df["label"] = df["label"].astype(str).map(normalize_label_name)
 
-    # Convert numeric columns and compute new features
-    df.dropna(inplace=True)
     for col in [
-            "ts",
-            "duration",
-            "orig_bytes",
-            "resp_bytes",
-            "missed_bytes",
-            "orig_pkts",
-            "orig_ip_bytes",
-            "resp_pkts",
-            "resp_ip_bytes",
-        ]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+        "ts",
+        "duration",
+        "orig_bytes",
+        "resp_bytes",
+        "missed_bytes",
+        "orig_pkts",
+        "orig_ip_bytes",
+        "resp_pkts",
+        "resp_ip_bytes",
+    ]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # clean numeric columns BEFORE engineering
+    numeric_cols = [
+        "ts",
+        "duration",
+        "orig_bytes",
+        "resp_bytes",
+        "missed_bytes",
+        "orig_pkts",
+        "orig_ip_bytes",
+        "resp_pkts",
+        "resp_ip_bytes",
+    ]
+    df[numeric_cols] = df[numeric_cols].replace([np.inf, -np.inf], np.nan)
+    df[numeric_cols] = df[numeric_cols].fillna(0.0)
 
     df = compute_and_add_time_elapsed(df)
-    duration_safe = df["duration"].replace(0, 1e-6)
+
+    duration_safe = df["duration"].copy()
+    duration_safe = duration_safe.replace([np.inf, -np.inf], np.nan)
+    duration_safe = duration_safe.fillna(0.0)
+    duration_safe = duration_safe.mask(duration_safe <= 0, 1e-6)
 
     df["orig_pkt_rate"] = df["orig_pkts"] / duration_safe
     df["orig_byte_rate"] = df["orig_bytes"] / duration_safe
     df["pkt_asymmetry"] = df["orig_pkts"] / (df["resp_pkts"] + 1.0)
     df["byte_asymmetry"] = df["orig_bytes"] / (df["resp_bytes"] + 1.0)
     df["flood_rate"] = df["orig_bytes"] / duration_safe
+
+    engineered_cols = [
+        "orig_pkt_rate",
+        "orig_byte_rate",
+        "pkt_asymmetry",
+        "byte_asymmetry",
+        "time_elapsed",
+        "flood_rate",
+    ]
+    for col in engineered_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+            df[col] = df[col].fillna(0.0)
 
     return df
 
