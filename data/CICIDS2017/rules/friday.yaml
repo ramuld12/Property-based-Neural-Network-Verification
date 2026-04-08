@@ -1,0 +1,266 @@
+attacks:
+
+  - name: Botnet_ARES
+    label: BOTNET
+    start: "10:02:00"
+    end: "11:02:00"
+    attacker_ips:
+      - 205.174.165.73
+    victim_ips:
+      - 192.168.10.15
+      - 192.168.10.9
+      - 192.168.10.14
+      - 192.168.10.5
+      - 192.168.10.8
+
+  - name: PortScan_01
+    label: PORTSCAN
+    start: "13:55:00"
+    end: "13:57:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_02
+    label: PORTSCAN
+    start: "13:58:00"
+    end: "14:00:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_03
+    label: PORTSCAN
+    start: "14:01:00"
+    end: "14:04:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_04
+    label: PORTSCAN
+    start: "14:05:00"
+    end: "14:07:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_05
+    label: PORTSCAN
+    start: "14:08:00"
+    end: "14:10:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_06
+    label: PORTSCAN
+    start: "14:11:00"
+    end: "14:13:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_07
+    label: PORTSCAN
+    start: "14:14:00"
+    end: "14:16:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_08
+    label: PORTSCAN
+    start: "14:17:00"
+    end: "14:19:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_09
+    label: PORTSCAN
+    start: "14:20:00"
+    end: "14:21:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_10
+    label: PORTSCAN
+    start: "14:22:00"
+    end: "14:24:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_11
+    label: PORTSCAN
+    start: "14:33:00"
+    end: "14:33:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_12
+    label: PORTSCAN
+    start: "14:35:00"
+    end: "14:35:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_13
+    label: PORTSCAN
+    start: "14:51:00"
+    end: "14:53:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_14
+    label: PORTSCAN
+    start: "14:54:00"
+    end: "14:56:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_15
+    label: PORTSCAN
+    start: "14:57:00"
+    end: "14:59:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_16
+    label: PORTSCAN
+    start: "15:00:00"
+    end: "15:02:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_17
+    label: PORTSCAN
+    start: "15:03:00"
+    end: "15:05:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_18
+    label: PORTSCAN
+    start: "15:06:00"
+    end: "15:07:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_19
+    label: PORTSCAN
+    start: "15:08:00"
+    end: "15:10:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_20
+    label: PORTSCAN
+    start: "15:11:00"
+    end: "15:12:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_21
+    label: PORTSCAN
+    start: "15:13:00"
+    end: "15:15:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_22
+    label: PORTSCAN
+    start: "15:16:00"
+    end: "15:18:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_23
+    label: PORTSCAN
+    start: "15:19:00"
+    end: "15:21:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_24
+    label: PORTSCAN
+    start: "15:22:00"
+    end: "15:24:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_25
+    label: PORTSCAN
+    start: "15:25:00"
+    end: "15:25:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_26
+    label: PORTSCAN
+    start: "15:26:00"
+    end: "15:27:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: PortScan_27
+    label: PORTSCAN
+    start: "15:28:00"
+    end: "15:29:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: DDoS_LOIT
+    label: DDOS_LOIT
+    start: "15:56:00"
+    end: "16:16:00"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50

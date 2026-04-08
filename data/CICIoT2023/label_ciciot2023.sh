@@ -14,7 +14,9 @@ for pcap in "$PCAP_DIR"/*.pcap; do
     stem="${fname%.pcap}"
 
     # Decide label from filename
-    if [[ "$stem" == BenignTraffic* ]]; then
+    if [[ "$stem" == Recon-PortScan ]]; then
+        label="PortScan"
+    elif [[ "$stem" == BenignTraffic* ]]; then
         label="BENIGN"
     elif [[ "$stem" == DoS-HTTP_Flood* ]]; then
         label="DoS-HTTP_Flood"
