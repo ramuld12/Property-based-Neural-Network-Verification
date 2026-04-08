@@ -130,14 +130,9 @@ def load_and_evaluate_cnnlstm_model(
     model.eval()
     with torch.no_grad():
         logits = model(X_tensor)
-        probs = torch.sigmoid(logits).cpu().numpy()
+        preds = torch.argmax(logits, dim=1).cpu().numpy()
+    y_pred_labels = label_encoder.inverse_transform(preds)
 
-    # Convert probabilities to class predictions
-    y_pred = (probs >= 0.5).astype(int).flatten()
-
-    # Decode labels if encoder exists
-    if label_encoder is not None:
-        y_pred = label_encoder.inverse_transform(y_pred)
 
     print(f"Evaluation for {model_name}:")
-    evaluate_model(y_true, y_pred, model_name=model_name)
+    evaluate_model(y_true, y_pred_labels, model_name=model_name)
