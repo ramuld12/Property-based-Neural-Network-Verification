@@ -19,3 +19,9 @@ Make sure to make it executable at first by running
 ```bash
 chmod -X label_ciciot2023.sh
 ```
+Then run it pointing to individual pcaps or all files ending with .pcap:
+
+```bash
+./label_ciciot2023.sh pcaps/file1.pcap pcaps/file2.pcap
+./label_ciciot2023.sh *.pcap
+```

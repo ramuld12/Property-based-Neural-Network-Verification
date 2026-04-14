@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PCAP_DIR="pcaps"
 OUT_DIR="zeek_logs"
 FINAL_CSV="ciciot2023_labeled_conn.tsv"
 
 mkdir -p "$OUT_DIR"
 
+# Ensure at least one PCAP is provided
+
+if [ "$#" -eq 0 ]; then
+    echo "Usage: $0 <pcap1> [pcap2 ...]"
+    exit 1
+fi
+
 header_written=false
 
-for pcap in "$PCAP_DIR"/*.pcap; do
+for pcap in "$@"; do
+    pcap=$(realpath "$pcap")
     fname=$(basename "$pcap")
     stem="${fname%.pcap}"
+
 
     # Decide label from filename
     if [[ "$stem" == Recon-PortScan ]]; then
@@ -35,20 +43,20 @@ for pcap in "$PCAP_DIR"/*.pcap; do
 
     (
         cd "$workdir"
-        zeek -C -r "../../$pcap"
+        zeek -C -r "$pcap"
     )
 
     conn="$workdir/conn.log"
 
-    # Write header only once
-    if [ "$header_written" = false ]; then
+    # Write header only if file doesn't exist or is empty
+    if [ ! -s "$FINAL_CSV" ]; then
         header=$(grep '^#fields' "$conn" | cut -f2-)
         echo -e "${header}\tlabel" > "$FINAL_CSV"
-        header_written=true
     fi
 
     # Extract data rows and append label
     grep -v '^#' "$conn" | awk -v lbl="$label" '{print $0"\t"lbl}' >> "$FINAL_CSV"
+
 
 done
 
