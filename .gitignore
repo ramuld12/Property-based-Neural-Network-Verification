@@ -158,6 +158,7 @@ experiments/
 
 # Ignore pcap files
 *.pcap
+**/pcaps/
 data/CICIoT2023/*.csv
 
 # Zeek logs and TSVs

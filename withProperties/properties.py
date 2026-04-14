@@ -8,7 +8,7 @@ from property_driven_ml.constraints.postconditions import Postcondition
 
 
 # ============================================================
-# PRECONDITION
+# BASE
 # ============================================================
 
 class IdentityPrecondition(Precondition):
@@ -21,6 +21,37 @@ class SimpleConstraint(Constraint):
         super().__init__(device)
         self.precondition = IdentityPrecondition()
         self.postcondition = postcondition
+
+
+class PropertyCollection:
+    def __init__(self, constraints, logic=pml_logics.DL2()):
+        self.constraints = constraints
+        self.logic = logic
+
+    def compute_loss(self, model, x_batch):
+        losses = []
+        sats = []
+
+        for i, constraint in enumerate(self.constraints):
+            loss_i, sat_i = constraint.eval(
+                N=model,
+                x=x_batch,
+                x_adv=None,
+                y_target=None,
+                logic=self.logic,
+                reduction="mean",
+            )
+            losses.append(loss_i)
+            sats.append(sat_i)
+
+        total_loss = torch.stack(losses).mean()
+
+        stats = {}
+        for i, (loss_i, sat_i) in enumerate(zip(losses, sats)):
+            stats[f"constraint_{i}_loss"] = float(loss_i.item())
+            stats[f"constraint_{i}_sat"] = float(sat_i.item())
+
+        return total_loss, stats
 
 
 # ============================================================
@@ -36,11 +67,15 @@ def scaled_threshold(theta_raw: float, feature_name: str, scaler, feature_names:
     return (theta_raw - scaler.mean_[idx]) / scaler.scale_[idx]
 
 
-def target_dominates(probs: torch.Tensor, target_idx: int):
-    """
-    Returns:
-        p_target >= max(other_probs)
-    """
+def feat(x: torch.Tensor) -> torch.Tensor:
+    return x.squeeze(1)
+
+
+def col(x: torch.Tensor, feat_idx: dict[str, int], name: str) -> torch.Tensor:
+    return feat(x)[:, feat_idx[name]]
+
+
+def target_dominates(probs: torch.Tensor, target_idx: int) -> torch.Tensor:
     p_target = probs[:, target_idx]
     other_indices = [i for i in range(probs.shape[1]) if i != target_idx]
 
@@ -51,204 +86,98 @@ def target_dominates(probs: torch.Tensor, target_idx: int):
     return p_target >= max_other
 
 
-# ============================================================
-# VALIDITY / DOS_HTTP_FLOOD MASKS
-# ============================================================
-
-def valid_input_mask(x: torch.Tensor):
-    feat = x.squeeze(1)
-    return torch.isfinite(feat).all(dim=1)
-
-
-def valid_tcp_handshake_mask(x: torch.Tensor, feat_idx: dict[str, int]):
-    feat = x.squeeze(1)
-    cond = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
-
-    if "orig_pkts" in feat_idx:
-        cond = cond & (feat[:, feat_idx["orig_pkts"]] > 0)
-
-    if "resp_pkts" in feat_idx:
-        cond = cond & (feat[:, feat_idx["resp_pkts"]] > 0)
-
-    return cond
-
-
-def valid_http_connection_mask(x: torch.Tensor, feat_idx: dict[str, int]):
-    if "service" not in feat_idx:
-        return torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
-
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["service"]] >= 0
-
-
-def valid_duration_mask(x: torch.Tensor, feat_idx: dict[str, int], min_dur: float, max_dur: float):
-    feat = x.squeeze(1)
-    duration = feat[:, feat_idx["duration"]]
-    return (duration >= min_dur) & (duration <= max_dur)
-
-
-def valid_packet_size_mask(x: torch.Tensor, feat_idx: dict[str, int]):
-    feat = x.squeeze(1)
-    cond = torch.ones(x.shape[0], dtype=torch.bool, device=x.device)
-
-    if "orig_bytes" in feat_idx:
-        cond = cond & (feat[:, feat_idx["orig_bytes"]] >= 0)
-    if "resp_bytes" in feat_idx:
-        cond = cond & (feat[:, feat_idx["resp_bytes"]] >= 0)
-    if "orig_pkts" in feat_idx:
-        cond = cond & (feat[:, feat_idx["orig_pkts"]] > 0)
-
-    return cond
-
-
-def valid_iat_mask(x: torch.Tensor, feat_idx: dict[str, int], max_pkt_rate: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["orig_pkt_rate"]] <= max_pkt_rate
-
-
-def mal_time_elapsed_mask(x: torch.Tensor, feat_idx: dict[str, int], max_time_elapsed: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["time_elapsed"]] <= max_time_elapsed
-
-
-def mal_flood_rate_mask(x: torch.Tensor, feat_idx: dict[str, int], min_flood_rate: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["flood_rate"]] >= min_flood_rate
+def finite_input(x: torch.Tensor) -> torch.Tensor:
+    return torch.isfinite(feat(x)).all(dim=1)
 
 
 # ============================================================
-# PORTSCAN MASKS
+# DOS_HTTP_FLOOD
 # ============================================================
 
-def many_ports_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_ports: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["uniqDstPorts"]] >= thr_ports
-
-
-def few_pkts_per_port_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_pkts_per_port: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["pktsPerPort"]] <= thr_pkts_per_port
-
-
-def scan_elapsed_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_scan_duration: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["scanDuration"]] <= thr_scan_duration
-
-
-def single_source_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_src_ips: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["uniqSrcIPs"]] <= thr_src_ips
-
-
-def scan_fail_mask(x: torch.Tensor, feat_idx: dict[str, int], thr_fail_ratio: float):
-    feat = x.squeeze(1)
-    return feat[:, feat_idx["failRatio"]] >= thr_fail_ratio
-
-
-# ============================================================
-# DOS_HTTP_FLOOD PROPERTY
-# ============================================================
-
-class DOSHTTPFlood_MainRule(Postcondition):
+class DosHttpFloodRule(Postcondition):
     def __init__(
         self,
         feat_idx: dict[str, int],
         target_idx: int,
-        thr_min_duration: float,
-        thr_max_duration: float,
-        thr_max_pkt_rate_valid_iat: float,
-        thr_max_time_elapsed: float,
-        thr_min_flood_rate: float,
+        min_duration: float,
+        max_duration: float,
+        max_valid_pkt_rate: float,
+        max_time_elapsed: float,
+        min_flood_rate: float,
     ):
         self.feat_idx = feat_idx
         self.target_idx = target_idx
-        self.thr_min_duration = thr_min_duration
-        self.thr_max_duration = thr_max_duration
-        self.thr_max_pkt_rate_valid_iat = thr_max_pkt_rate_valid_iat
-        self.thr_max_time_elapsed = thr_max_time_elapsed
-        self.thr_min_flood_rate = thr_min_flood_rate
+        self.min_duration = min_duration
+        self.max_duration = max_duration
+        self.max_valid_pkt_rate = max_valid_pkt_rate
+        self.max_time_elapsed = max_time_elapsed
+        self.min_flood_rate = min_flood_rate
 
     def get_postcondition(self, N, x):
-        logits = N(x)
-        probs = torch.softmax(logits, dim=1)
+        probs = torch.softmax(N(x), dim=1)
 
-        valid_input = valid_input_mask(x)
-        valid_tcp = valid_tcp_handshake_mask(x, self.feat_idx)
-        valid_http = valid_http_connection_mask(x, self.feat_idx)
-        valid_duration = valid_duration_mask(
-            x, self.feat_idx, self.thr_min_duration, self.thr_max_duration
+        valid_input = finite_input(x)
+        valid_tcp = col(x, self.feat_idx, "valid_tcp_handshake_feature") > 0
+        valid_http = col(x, self.feat_idx, "service") >= 0
+        valid_duration = (
+            (col(x, self.feat_idx, "duration") >= self.min_duration)
+            & (col(x, self.feat_idx, "duration") <= self.max_duration)
         )
-        valid_packet_size = valid_packet_size_mask(x, self.feat_idx)
-        valid_iat = valid_iat_mask(
-            x, self.feat_idx, self.thr_max_pkt_rate_valid_iat
+        valid_packet_size = (
+            (col(x, self.feat_idx, "orig_bytes") >= 0)
+            & (col(x, self.feat_idx, "resp_bytes") >= 0)
+            & (col(x, self.feat_idx, "orig_pkts") > 0)
         )
+        valid_iat = col(x, self.feat_idx, "orig_pkt_rate") <= self.max_valid_pkt_rate
 
-        mal_time_elapsed = mal_time_elapsed_mask(
-            x, self.feat_idx, self.thr_max_time_elapsed
-        )
-        mal_flood_rate = mal_flood_rate_mask(
-            x, self.feat_idx, self.thr_min_flood_rate
-        )
+        mal_time_elapsed = col(x, self.feat_idx, "time_elapsed") <= self.max_time_elapsed
+        mal_flood_rate = col(x, self.feat_idx, "flood_rate") >= self.min_flood_rate
 
         dominates = target_dominates(probs, self.target_idx)
 
         def formula(logic):
-            validity = logic.AND(
+            antecedent = logic.AND(
                 valid_input,
                 valid_tcp,
                 valid_http,
                 valid_duration,
                 valid_packet_size,
                 valid_iat,
+                logic.OR(mal_time_elapsed, mal_flood_rate),
             )
-            malicious_behavior = logic.OR(
-                mal_time_elapsed,
-                mal_flood_rate,
-            )
-            antecedent = logic.AND(validity, malicious_behavior)
-            consequent = dominates
-            return logic.IMPL(antecedent, consequent)
+            return logic.IMPL(antecedent, dominates)
 
         return formula
 
 
 # ============================================================
-# PORTSCAN PROPERTY
+# PORTSCAN
 # ============================================================
 
-class PortScan_MainRule(Postcondition):
-    """
-    Your initial proposed OR-rule:
-    (manyPorts OR fewPktsPerPort OR scanElapsed OR singleSource OR scanFail)
-    => PortScan
-    """
+class PortScanRule(Postcondition):
     def __init__(
         self,
         feat_idx: dict[str, int],
         target_idx: int,
-        thr_ports: float,
-        thr_pkts_per_port: float,
-        thr_scan_duration: float,
-        thr_src_ips: float,
-        thr_fail_ratio: float,
+        min_ports: float,
+        max_pkts_per_port: float,
+        max_scan_duration: float,
+        min_fail_ratio: float,
     ):
         self.feat_idx = feat_idx
         self.target_idx = target_idx
-        self.thr_ports = thr_ports
-        self.thr_pkts_per_port = thr_pkts_per_port
-        self.thr_scan_duration = thr_scan_duration
-        self.thr_src_ips = thr_src_ips
-        self.thr_fail_ratio = thr_fail_ratio
+        self.min_ports = min_ports
+        self.max_pkts_per_port = max_pkts_per_port
+        self.max_scan_duration = max_scan_duration
+        self.min_fail_ratio = min_fail_ratio
 
     def get_postcondition(self, N, x):
-        logits = N(x)
-        probs = torch.softmax(logits, dim=1)
+        probs = torch.softmax(N(x), dim=1)
 
-        many_ports = many_ports_mask(x, self.feat_idx, self.thr_ports)
-        few_pkts = few_pkts_per_port_mask(x, self.feat_idx, self.thr_pkts_per_port)
-        short_scan = scan_elapsed_mask(x, self.feat_idx, self.thr_scan_duration)
-        single_src = single_source_mask(x, self.feat_idx, self.thr_src_ips)
-        high_fail = scan_fail_mask(x, self.feat_idx, self.thr_fail_ratio)
+        many_ports = col(x, self.feat_idx, "uniq_dst_ports") >= self.min_ports
+        few_pkts = col(x, self.feat_idx, "pkts_per_port") <= self.max_pkts_per_port
+        short_scan = col(x, self.feat_idx, "scan_duration") <= self.max_scan_duration
+        high_fail = col(x, self.feat_idx, "fail_ratio") >= self.min_fail_ratio
 
         dominates = target_dominates(probs, self.target_idx)
 
@@ -257,48 +186,111 @@ class PortScan_MainRule(Postcondition):
                 many_ports,
                 few_pkts,
                 short_scan,
-                single_src,
                 high_fail,
             )
-            consequent = dominates
-            return logic.IMPL(antecedent, consequent)
+            return logic.IMPL(antecedent, dominates)
 
         return formula
 
 
 # ============================================================
-# COLLECTION
+# UDP FLOOD
 # ============================================================
 
-class PropertyCollection:
-    def __init__(self, constraints, logic=None):
-        self.constraints = constraints
-        self.logic = logic or pml_logics.GoedelFuzzyLogic()
+class DosUdpFloodRule(Postcondition):
+    def __init__(
+        self,
+        feat_idx: dict[str, int],
+        target_idx: int,
+        max_udp_duration: float,
+        min_udp_conn_count: float,
+        min_udp_packets: float,
+        min_udp_rate: float,
+        max_unique_src_ips: float,
+    ):
+        self.feat_idx = feat_idx
+        self.target_idx = target_idx
+        self.max_udp_duration = max_udp_duration
+        self.min_udp_conn_count = min_udp_conn_count
+        self.min_udp_packets = min_udp_packets
+        self.min_udp_rate = min_udp_rate
+        self.max_unique_src_ips = max_unique_src_ips
 
-    def compute_loss(self, model, x_batch):
-        losses = []
-        sats = []
+    def get_postcondition(self, N, x):
+        probs = torch.softmax(N(x), dim=1)
 
-        for i, c in enumerate(self.constraints):
-            loss_i, sat_i = c.eval(
-                N=model,
-                x=x_batch,
-                x_adv=None,
-                y_target=None,
-                logic=self.logic,
-                reduction="mean",
+        is_udp = col(x, self.feat_idx, "proto") >= 0  # practical placeholder after encoding
+        udp_elapsed = (
+            (col(x, self.feat_idx, "duration") >= 0)
+            & (col(x, self.feat_idx, "duration") <= self.max_udp_duration)
+        )
+        udp_conn = col(x, self.feat_idx, "udp_conn_count") >= self.min_udp_conn_count
+        udp_packets = col(x, self.feat_idx, "udp_packets") >= self.min_udp_packets
+        udp_rate = col(x, self.feat_idx, "udp_rate") >= self.min_udp_rate
+        single_source = col(x, self.feat_idx, "unique_src_ips") <= self.max_unique_src_ips
+
+        dominates = target_dominates(probs, self.target_idx)
+
+        def formula(logic):
+            antecedent = logic.AND(
+                is_udp,
+                udp_conn,
+                udp_elapsed,
+                udp_packets,
+                udp_rate,
+                single_source,
             )
-            losses.append(loss_i)
-            sats.append(sat_i)
+            return logic.IMPL(antecedent, dominates)
 
-        total_loss = torch.stack(losses).mean()
+        return formula
 
-        stats = {}
-        for i, (l, s) in enumerate(zip(losses, sats)):
-            stats[f"constraint_{i}_loss"] = float(l.item())
-            stats[f"constraint_{i}_sat"] = float(s.item())
 
-        return total_loss, stats
+class DdosUdpFloodRule(Postcondition):
+    def __init__(
+        self,
+        feat_idx: dict[str, int],
+        target_idx: int,
+        max_udp_duration: float,
+        min_udp_conn_count: float,
+        min_udp_packets: float,
+        min_udp_rate: float,
+        min_unique_src_ips: float,
+    ):
+        self.feat_idx = feat_idx
+        self.target_idx = target_idx
+        self.max_udp_duration = max_udp_duration
+        self.min_udp_conn_count = min_udp_conn_count
+        self.min_udp_packets = min_udp_packets
+        self.min_udp_rate = min_udp_rate
+        self.min_unique_src_ips = min_unique_src_ips
+
+    def get_postcondition(self, N, x):
+        probs = torch.softmax(N(x), dim=1)
+
+        is_udp = col(x, self.feat_idx, "proto") >= 0  # practical placeholder after encoding
+        udp_elapsed = (
+            (col(x, self.feat_idx, "duration") >= 0)
+            & (col(x, self.feat_idx, "duration") <= self.max_udp_duration)
+        )
+        udp_conn = col(x, self.feat_idx, "udp_conn_count") >= self.min_udp_conn_count
+        udp_packets = col(x, self.feat_idx, "udp_packets") >= self.min_udp_packets
+        udp_rate = col(x, self.feat_idx, "udp_rate") >= self.min_udp_rate
+        multi_source = col(x, self.feat_idx, "unique_src_ips") >= self.min_unique_src_ips
+
+        dominates = target_dominates(probs, self.target_idx)
+
+        def formula(logic):
+            antecedent = logic.AND(
+                is_udp,
+                udp_conn,
+                udp_elapsed,
+                udp_packets,
+                udp_rate,
+                multi_source,
+            )
+            return logic.IMPL(antecedent, dominates)
+
+        return formula
 
 
 # ============================================================
@@ -310,63 +302,115 @@ def build_properties(
     scaler,
     feature_names: list[str],
     label_encoder,
+    logic: pml_logics.Logic = pml_logics.DL2(),
 ):
     feat_idx = get_feature_index_map(feature_names)
 
-    dos_idx = int(label_encoder.transform(["DOS_HTTP_FLOOD"])[0])
-    portscan_idx = int(label_encoder.transform(["PORTSCAN"])[0])
+    thresholds = {
+        "dos_http_flood": {
+            "min_duration": 0.0,
+            "max_duration": 60.0,
+            "max_valid_pkt_rate": 10000.0,
+            "max_time_elapsed": 1.0,
+            "min_flood_rate": 500.0,
+        },
+        "portscan": {
+            "min_ports": 10.0,
+            "max_pkts_per_port": 3.0,
+            "max_scan_duration": 2.0,
+            "min_fail_ratio": 0.5,
+        },
+        "dos_udp_flood": {
+            "max_udp_duration": 2.0,
+            "min_udp_conn_count": 20.0,
+            "min_udp_packets": 200.0,
+            "min_udp_rate": 100.0,
+            "max_unique_src_ips": 1.0,
+        },
+        "ddos_udp_flood": {
+            "max_udp_duration": 2.0,
+            "min_udp_conn_count": 50.0,
+            "min_udp_packets": 500.0,
+            "min_udp_rate": 200.0,
+            "min_unique_src_ips": 5.0,
+        },
+    }
 
-    # DOS_HTTP_FLOOD thresholds
-    THR_MIN_DURATION = 0.0
-    THR_MAX_DURATION = 60.0
-    THR_MAX_VALID_PKT_RATE = 10000.0
-    THR_MAX_TIME_ELAPSED = 1.0
-    THR_MIN_FLOOD_RATE = 500.0
+    def s(group: str, threshold_key: str, feature_name: str) -> float:
+        return scaled_threshold(
+            thresholds[group][threshold_key],
+            feature_name,
+            scaler,
+            feature_names,
+        )
 
-    dos_thr_min_duration = scaled_threshold(THR_MIN_DURATION, "duration", scaler, feature_names)
-    dos_thr_max_duration = scaled_threshold(THR_MAX_DURATION, "duration", scaler, feature_names)
-    dos_thr_max_valid_pkt_rate = scaled_threshold(THR_MAX_VALID_PKT_RATE, "orig_pkt_rate", scaler, feature_names)
-    dos_thr_max_time_elapsed = scaled_threshold(THR_MAX_TIME_ELAPSED, "time_elapsed", scaler, feature_names)
-    dos_thr_min_flood_rate = scaled_threshold(THR_MIN_FLOOD_RATE, "flood_rate", scaler, feature_names)
+    constraints = []
 
-    # PORTSCAN thresholds
-    THR_PORTS = 10.0
-    THR_PKTS_PER_PORT = 3.0
-    THR_SCAN_DURATION = 2.0
-    THR_SRC_IPS = 1.0
-    THR_FAIL_RATIO = 0.5
+    if "DOS_HTTP_FLOOD" in label_encoder.classes_:
+        target_idx = int(label_encoder.transform(["DOS_HTTP_FLOOD"])[0])
+        constraints.append(
+            SimpleConstraint(
+                device,
+                DosHttpFloodRule(
+                    feat_idx=feat_idx,
+                    target_idx=target_idx,
+                    min_duration=s("dos_http_flood", "min_duration", "duration"),
+                    max_duration=s("dos_http_flood", "max_duration", "duration"),
+                    max_valid_pkt_rate=s("dos_http_flood", "max_valid_pkt_rate", "orig_pkt_rate"),
+                    max_time_elapsed=s("dos_http_flood", "max_time_elapsed", "time_elapsed"),
+                    min_flood_rate=s("dos_http_flood", "min_flood_rate", "flood_rate"),
+                ),
+            )
+        )
 
-    scan_thr_ports = scaled_threshold(THR_PORTS, "uniqDstPorts", scaler, feature_names)
-    scan_thr_pkts_per_port = scaled_threshold(THR_PKTS_PER_PORT, "pktsPerPort", scaler, feature_names)
-    scan_thr_scan_duration = scaled_threshold(THR_SCAN_DURATION, "scanDuration", scaler, feature_names)
-    scan_thr_src_ips = scaled_threshold(THR_SRC_IPS, "uniqSrcIPs", scaler, feature_names)
-    scan_thr_fail_ratio = scaled_threshold(THR_FAIL_RATIO, "failRatio", scaler, feature_names)
+    if "PORTSCAN" in label_encoder.classes_:
+        target_idx = int(label_encoder.transform(["PORTSCAN"])[0])
+        constraints.append(
+            SimpleConstraint(
+                device,
+                PortScanRule(
+                    feat_idx=feat_idx,
+                    target_idx=target_idx,
+                    min_ports=s("portscan", "min_ports", "uniq_dst_ports"),
+                    max_pkts_per_port=s("portscan", "max_pkts_per_port", "pkts_per_port"),
+                    max_scan_duration=s("portscan", "max_scan_duration", "scan_duration"),
+                    min_fail_ratio=s("portscan", "min_fail_ratio", "fail_ratio"),
+                ),
+            )
+        )
 
-    constraints = [
-        SimpleConstraint(
-            device,
-            DOSHTTPFlood_MainRule(
-                feat_idx=feat_idx,
-                target_idx=dos_idx,
-                thr_min_duration=dos_thr_min_duration,
-                thr_max_duration=dos_thr_max_duration,
-                thr_max_pkt_rate_valid_iat=dos_thr_max_valid_pkt_rate,
-                thr_max_time_elapsed=dos_thr_max_time_elapsed,
-                thr_min_flood_rate=dos_thr_min_flood_rate,
-            ),
-        ),
-        SimpleConstraint(
-            device,
-            PortScan_MainRule(
-                feat_idx=feat_idx,
-                target_idx=portscan_idx,
-                thr_ports=scan_thr_ports,
-                thr_pkts_per_port=scan_thr_pkts_per_port,
-                thr_scan_duration=scan_thr_scan_duration,
-                thr_src_ips=scan_thr_src_ips,
-                thr_fail_ratio=scan_thr_fail_ratio,
-            ),
-        ),
-    ]
+    if "DOS_UDP_FLOOD" in label_encoder.classes_:
+        target_idx = int(label_encoder.transform(["DOS_UDP_FLOOD"])[0])
+        constraints.append(
+            SimpleConstraint(
+                device,
+                DosUdpFloodRule(
+                    feat_idx=feat_idx,
+                    target_idx=target_idx,
+                    max_udp_duration=s("dos_udp_flood", "max_udp_duration", "duration"),
+                    min_udp_conn_count=s("dos_udp_flood", "min_udp_conn_count", "udp_conn_count"),
+                    min_udp_packets=s("dos_udp_flood", "min_udp_packets", "udp_packets"),
+                    min_udp_rate=s("dos_udp_flood", "min_udp_rate", "udp_rate"),
+                    max_unique_src_ips=s("dos_udp_flood", "max_unique_src_ips", "unique_src_ips"),
+                ),
+            )
+        )
 
-    return PropertyCollection(constraints)
+    if "DDOS_UDP_FLOOD" in label_encoder.classes_:
+        target_idx = int(label_encoder.transform(["DDOS_UDP_FLOOD"])[0])
+        constraints.append(
+            SimpleConstraint(
+                device,
+                DdosUdpFloodRule(
+                    feat_idx=feat_idx,
+                    target_idx=target_idx,
+                    max_udp_duration=s("ddos_udp_flood", "max_udp_duration", "duration"),
+                    min_udp_conn_count=s("ddos_udp_flood", "min_udp_conn_count", "udp_conn_count"),
+                    min_udp_packets=s("ddos_udp_flood", "min_udp_packets", "udp_packets"),
+                    min_udp_rate=s("ddos_udp_flood", "min_udp_rate", "udp_rate"),
+                    min_unique_src_ips=s("ddos_udp_flood", "min_unique_src_ips", "unique_src_ips"),
+                ),
+            )
+        )
+
+    return PropertyCollection(constraints, logic=logic)

@@ -20,6 +20,10 @@ for pcap in "$PCAP_DIR"/*.pcap; do
         label="BENIGN"
     elif [[ "$stem" == DoS-HTTP_Flood* ]]; then
         label="DoS-HTTP_Flood"
+    elif [[ "$stem" == DoS-UDP_Flood* ]]; then
+        label="DoS-UDP_Flood"
+    elif [[ "$stem" == DDoS-UDP_Flood* ]]; then
+        label="DDoS-UDP_Flood"
     else
         label="$stem"
     fi
