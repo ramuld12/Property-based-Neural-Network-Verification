@@ -33,11 +33,18 @@ FEATURES = [
     "fail_ratio",
 
     # UDP flood feature
-    # =========================
     "udp_conn_count",
     "udp_packets",       
     "udp_rate",           
-    "unique_src_ips",     
+    "unique_src_ips",   
+
+    # SYN flood features
+    "syn_duration",
+    "syn_conn_count",
+    "syn_count",
+    "syn_rate",
+    "half_open_count",
+    "source_ip_count",
 ]
 
 def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):

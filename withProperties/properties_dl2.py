@@ -59,8 +59,9 @@ def active_margin_loss(margin: torch.Tensor, active: torch.Tensor) -> tuple[torc
 # ============================================================
 
 class Dl2PropertyCollection:
-    def __init__(self, rules):
+    def __init__(self, rules, rule_names):
         self.rules = rules
+        self.rule_names = rule_names
         self.logic = pml_logics.DL2()
 
     def compute_loss(self, model, x_batch):
@@ -74,8 +75,8 @@ class Dl2PropertyCollection:
             loss_i, sat_i = rule(logits, x_batch)
             losses.append(loss_i)
             sats.append(sat_i)
-            stats[f"constraint_{i}_loss"] = float(loss_i.item())
-            stats[f"constraint_{i}_sat"] = float(sat_i.item())
+            stats[f"{self.rule_names[i]}_loss"] = float(loss_i.item())
+            stats[f"{self.rule_names[i]}_sat"] = float(sat_i.item())
 
         total_loss = torch.stack(losses).mean() if losses else torch.zeros((), device=logits.device)
         return total_loss, stats
@@ -144,32 +145,6 @@ def build_portscan_rule(feat_idx, target_idx, scaler, feature_names):
 
     return rule
 
-
-def build_dos_udp_rule(feat_idx, target_idx, scaler, feature_names):
-    max_udp_duration = scaled_threshold(ATTACK_SPECS["dos_udp_flood"]["max_udp_duration"], "duration", scaler, feature_names)
-    min_udp_conn_count = scaled_threshold(ATTACK_SPECS["dos_udp_flood"]["min_udp_conn_count"], "udp_conn_count", scaler, feature_names)
-    min_udp_packets = scaled_threshold(ATTACK_SPECS["dos_udp_flood"]["min_udp_packets"], "udp_packets", scaler, feature_names)
-    min_udp_rate = scaled_threshold(ATTACK_SPECS["dos_udp_flood"]["min_udp_rate"], "udp_rate", scaler, feature_names)
-    max_unique_src_ips = scaled_threshold(ATTACK_SPECS["dos_udp_flood"]["max_unique_src_ips"], "unique_src_ips", scaler, feature_names)
-
-    def rule(logits, x):
-        is_udp = col(x, feat_idx, "proto") >= 0
-        udp_elapsed = (
-            (col(x, feat_idx, "duration") >= 0)
-            & (col(x, feat_idx, "duration") <= max_udp_duration)
-        )
-        udp_conn = col(x, feat_idx, "udp_conn_count") >= min_udp_conn_count
-        udp_packets = col(x, feat_idx, "udp_packets") >= min_udp_packets
-        udp_rate = col(x, feat_idx, "udp_rate") >= min_udp_rate
-        single_source = col(x, feat_idx, "unique_src_ips") <= max_unique_src_ips
-
-        active = is_udp & udp_elapsed & udp_conn & udp_packets & udp_rate & single_source
-        margin = class_margin(logits, target_idx)
-        return active_margin_loss(margin, active)
-
-    return rule
-
-
 def build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names):
     max_udp_duration = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["max_udp_duration"], "duration", scaler, feature_names)
     min_udp_conn_count = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["min_udp_conn_count"], "udp_conn_count", scaler, feature_names)
@@ -194,6 +169,61 @@ def build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names):
 
     return rule
 
+def build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names):
+    max_syn_duration = scaled_threshold(
+        ATTACK_SPECS["ddos_syn_flood"]["max_syn_duration"],
+        "syn_duration",
+        scaler,
+        feature_names,
+    )
+    min_syn_conn_count = scaled_threshold(
+        ATTACK_SPECS["ddos_syn_flood"]["min_syn_conn_count"],
+        "syn_conn_count",
+        scaler,
+        feature_names,
+    )
+    min_syn_count = scaled_threshold(
+        ATTACK_SPECS["ddos_syn_flood"]["min_syn_count"],
+        "syn_count",
+        scaler,
+        feature_names,
+    )
+    min_syn_rate = scaled_threshold(
+        ATTACK_SPECS["ddos_syn_flood"]["min_syn_rate"],
+        "syn_rate",
+        scaler,
+        feature_names,
+    )
+    min_half_open_count = scaled_threshold(
+        ATTACK_SPECS["ddos_syn_flood"]["min_half_open_count"],
+        "half_open_count",
+        scaler,
+        feature_names,
+    )
+    min_source_ip_count = scaled_threshold(
+        ATTACK_SPECS["ddos_syn_flood"]["min_source_ip_count"],
+        "source_ip_count",
+        scaler,
+        feature_names,
+    )
+
+    def rule(logits, x):
+        syn_elapsed = (
+            (col(x, feat_idx, "syn_duration") >= 0)
+            & (col(x, feat_idx, "syn_duration") <= max_syn_duration)
+        )
+        syn_conn = col(x, feat_idx, "syn_conn_count") >= min_syn_conn_count
+        syn_count = col(x, feat_idx, "syn_count") >= min_syn_count
+        syn_rate = col(x, feat_idx, "syn_rate") >= min_syn_rate
+        half_open = col(x, feat_idx, "half_open_count") >= min_half_open_count
+        multi_source = col(x, feat_idx, "source_ip_count") >= min_source_ip_count
+
+        active = syn_elapsed & syn_conn & syn_count & syn_rate & half_open & multi_source
+        margin = class_margin(logits, target_idx)
+        return active_margin_loss(margin, active)
+
+    return rule
+
 
 # ============================================================
 # BUILDER
@@ -208,25 +238,37 @@ def build_properties(
 ):
     feat_idx = get_feature_index_map(feature_names)
     rules = []
+    rule_names = []
 
     if "DOS_HTTP_FLOOD" in label_encoder.classes_:
         target_idx = int(label_encoder.transform(["DOS_HTTP_FLOOD"])[0])
         rules.append(build_dos_http_rule(feat_idx, target_idx, scaler, feature_names))
+        rule_names.append("DOS_HTTP_FLOOD")
 
     if "PORTSCAN" in label_encoder.classes_:
         target_idx = int(label_encoder.transform(["PORTSCAN"])[0])
         rules.append(build_portscan_rule(feat_idx, target_idx, scaler, feature_names))
-
-    if "DOS_UDP_FLOOD" in label_encoder.classes_ and all(
-        f in feature_names for f in ["duration", "udp_conn_count", "udp_packets", "udp_rate", "unique_src_ips"]
-    ):
-        target_idx = int(label_encoder.transform(["DOS_UDP_FLOOD"])[0])
-        rules.append(build_dos_udp_rule(feat_idx, target_idx, scaler, feature_names))
+        rule_names.append("PORTSCAN")
 
     if "DDOS_UDP_FLOOD" in label_encoder.classes_ and all(
         f in feature_names for f in ["duration", "udp_conn_count", "udp_packets", "udp_rate", "unique_src_ips"]
     ):
         target_idx = int(label_encoder.transform(["DDOS_UDP_FLOOD"])[0])
         rules.append(build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names))
+        rule_names.append("DDOS_UDP_FLOOD")
 
-    return Dl2PropertyCollection(rules)
+    if "DDOS_SYN_FLOOD" in label_encoder.classes_ and all(
+        f in feature_names for f in [
+            "syn_duration",
+            "syn_conn_count",
+            "syn_count",
+            "syn_rate",
+            "half_open_count",
+            "source_ip_count",
+        ]
+    ):
+        target_idx = int(label_encoder.transform(["DDOS_SYN_FLOOD"])[0])
+        rules.append(build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names))
+        rule_names.append("DDOS_SYN_FLOOD")
+
+    return Dl2PropertyCollection(rules, rule_names)

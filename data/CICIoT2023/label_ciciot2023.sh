@@ -23,22 +23,30 @@ for pcap in "$@"; do
 
     # Decide label from filename
     if [[ "$stem" == Recon-PortScan ]]; then
-        label="PortScan"
+        label="PORTSCAN"
     elif [[ "$stem" == BenignTraffic* ]]; then
         label="BENIGN"
     elif [[ "$stem" == DoS-HTTP_Flood* ]]; then
-        label="DoS-HTTP_Flood"
+        label="DOS_HTTP_FLOOD"
     elif [[ "$stem" == DoS-UDP_Flood* ]]; then
-        label="DoS-UDP_Flood"
+        label="DOS_UDP_FLOOD"
     elif [[ "$stem" == DDoS-UDP_Flood* ]]; then
-        label="DDoS-UDP_Flood"
+        label="DDOS_UDP_FLOOD"
     elif [[ "$stem" == DDoS-SYN_Flood* ]]; then
-        label="DDoS-SYN_Flood"
+        label="DDOS_SYN_FLOOD"
     else
         label="ATTACK"
     fi
 
     workdir="$OUT_DIR/$stem"
+
+    # Skip if already processed
+
+    if [ -d "$workdir" ]; then
+        echo "Skipping $fname (directory already exists)"
+        continue
+    fi
+
     mkdir -p "$workdir"
 
     echo "Processing $fname -> label=$label"
@@ -48,22 +56,27 @@ for pcap in "$@"; do
 
         echo "  -> Running Zeek (limit: 0.2 GB conn.log)..."
 
-        zeek -C -r "$pcap" &
+        setsid zeek -C -r "$pcap" &
         zeek_pid=$!
 
-        LIMIT=$((200 * 1024 * 1024))  # 200 MB in bytes
+        LIMIT=$((200 * 1024 * 1024))  # 200 MiB
 
         while kill -0 "$zeek_pid" 2>/dev/null; do
             if [ -f conn.log ]; then
                 size=$(stat -c%s conn.log 2>/dev/null || echo 0)
 
                 if [ "$size" -ge "$LIMIT" ]; then
-                    echo "  -> conn.log reached 200MB, stopping Zeek for $fname"
-                    kill "$zeek_pid" 2>/dev/null || true
+                    echo "  -> conn.log reached 200 MiB, stopping Zeek for $fname"
+
+                    # Kill the whole process group
+                    kill -TERM -- "-$zeek_pid" 2>/dev/null || true
+                    sleep 3
+                    kill -KILL -- "-$zeek_pid" 2>/dev/null || true
+
                     break
                 fi
             fi
-            sleep 2
+            sleep 1
         done
 
         wait "$zeek_pid" 2>/dev/null || true

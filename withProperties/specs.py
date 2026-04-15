@@ -19,4 +19,12 @@ ATTACK_SPECS = {
         "min_udp_rate": 200.0,
         "min_unique_src_ips": 5.0,
     },
+    "ddos_syn_flood": {
+        "max_syn_duration": 2.0,
+        "min_syn_conn_count": 50.0,
+        "min_syn_count": 100.0,
+        "min_syn_rate": 50.0,
+        "min_half_open_count": 20.0,
+        "min_source_ip_count": 2.0,
+    },
 }
