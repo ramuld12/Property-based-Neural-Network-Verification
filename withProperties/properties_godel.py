@@ -6,6 +6,7 @@ from property_driven_ml.constraints import Constraint
 from property_driven_ml.constraints.preconditions import Precondition
 from property_driven_ml.constraints.postconditions import Postcondition
 
+from specs import ATTACK_SPECS
 
 # ============================================================
 # BASE
@@ -24,7 +25,7 @@ class SimpleConstraint(Constraint):
 
 
 class PropertyCollection:
-    def __init__(self, constraints, logic=pml_logics.DL2()):
+    def __init__(self, constraints, logic=pml_logics.GoedelFuzzyLogic()):
         self.constraints = constraints
         self.logic = logic
 
@@ -302,43 +303,14 @@ def build_properties(
     scaler,
     feature_names: list[str],
     label_encoder,
-    logic: pml_logics.Logic = pml_logics.DL2(),
+    logic=None,
 ):
+    logic = logic or pml_logics.GoedelFuzzyLogic()
     feat_idx = get_feature_index_map(feature_names)
-
-    thresholds = {
-        "dos_http_flood": {
-            "min_duration": 0.0,
-            "max_duration": 60.0,
-            "max_valid_pkt_rate": 10000.0,
-            "max_time_elapsed": 1.0,
-            "min_flood_rate": 500.0,
-        },
-        "portscan": {
-            "min_ports": 10.0,
-            "max_pkts_per_port": 3.0,
-            "max_scan_duration": 2.0,
-            "min_fail_ratio": 0.5,
-        },
-        "dos_udp_flood": {
-            "max_udp_duration": 2.0,
-            "min_udp_conn_count": 20.0,
-            "min_udp_packets": 200.0,
-            "min_udp_rate": 100.0,
-            "max_unique_src_ips": 1.0,
-        },
-        "ddos_udp_flood": {
-            "max_udp_duration": 2.0,
-            "min_udp_conn_count": 50.0,
-            "min_udp_packets": 500.0,
-            "min_udp_rate": 200.0,
-            "min_unique_src_ips": 5.0,
-        },
-    }
 
     def s(group: str, threshold_key: str, feature_name: str) -> float:
         return scaled_threshold(
-            thresholds[group][threshold_key],
+            ATTACK_SPECS[group][threshold_key],
             feature_name,
             scaler,
             feature_names,
@@ -379,7 +351,9 @@ def build_properties(
             )
         )
 
-    if "DOS_UDP_FLOOD" in label_encoder.classes_:
+    if "DOS_UDP_FLOOD" in label_encoder.classes_ and all(
+        f in feature_names for f in ["duration", "udp_conn_count", "udp_packets", "udp_rate", "unique_src_ips"]
+    ):
         target_idx = int(label_encoder.transform(["DOS_UDP_FLOOD"])[0])
         constraints.append(
             SimpleConstraint(
@@ -396,7 +370,9 @@ def build_properties(
             )
         )
 
-    if "DDOS_UDP_FLOOD" in label_encoder.classes_:
+    if "DDOS_UDP_FLOOD" in label_encoder.classes_ and all(
+        f in feature_names for f in ["duration", "udp_conn_count", "udp_packets", "udp_rate", "unique_src_ips"]
+    ):
         target_idx = int(label_encoder.transform(["DDOS_UDP_FLOOD"])[0])
         constraints.append(
             SimpleConstraint(

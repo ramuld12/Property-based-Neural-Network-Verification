@@ -32,8 +32,10 @@ for pcap in "$@"; do
         label="DoS-UDP_Flood"
     elif [[ "$stem" == DDoS-UDP_Flood* ]]; then
         label="DDoS-UDP_Flood"
+    elif [[ "$stem" == DDoS-SYN_Flood* ]]; then
+        label="DDoS-SYN_Flood"
     else
-        label="$stem"
+        label="ATTACK"
     fi
 
     workdir="$OUT_DIR/$stem"
@@ -43,7 +45,28 @@ for pcap in "$@"; do
 
     (
         cd "$workdir"
-        zeek -C -r "$pcap"
+
+        echo "  -> Running Zeek (limit: 0.2 GB conn.log)..."
+
+        zeek -C -r "$pcap" &
+        zeek_pid=$!
+
+        LIMIT=$((200 * 1024 * 1024))  # 200 MB in bytes
+
+        while kill -0 "$zeek_pid" 2>/dev/null; do
+            if [ -f conn.log ]; then
+                size=$(stat -c%s conn.log 2>/dev/null || echo 0)
+
+                if [ "$size" -ge "$LIMIT" ]; then
+                    echo "  -> conn.log reached 200MB, stopping Zeek for $fname"
+                    kill "$zeek_pid" 2>/dev/null || true
+                    break
+                fi
+            fi
+            sleep 2
+        done
+
+        wait "$zeek_pid" 2>/dev/null || true
     )
 
     conn="$workdir/conn.log"
