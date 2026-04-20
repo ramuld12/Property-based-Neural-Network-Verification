@@ -40,3 +40,35 @@ class CNNLSTM(nn.Module):
         x = h_n[-1]                   # [B, 64]
         x = self.head(x)              # [B, num_classes]
         return x
+
+class MLP(nn.Module):
+    def __init__(self, n_features: int, num_classes: int):
+        super().__init__()
+
+        self.head = nn.Sequential(
+            nn.Linear(n_features, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes),
+        )
+
+    def forward(self, x):
+        # x: [B, 1, n_features]
+        x = x.squeeze(1)          # -> [B, n_features]
+        x = self.head(x)         # -> [B, num_classes]
+        return x
+    
+def build_model(model_type: str, n_features: int, num_classes: int) -> nn.Module:
+    model_type = model_type.lower()
+
+    if model_type == "mlp":
+        return MLP(
+            n_features=n_features,
+            num_classes=num_classes,
+        )
+    elif model_type == "cnnlstm":
+        return CNNLSTM(
+            n_features=n_features,
+            num_classes=num_classes,
+        )

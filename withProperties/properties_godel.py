@@ -47,13 +47,17 @@ class GoedelPropertyCollection:
             sats.append(sat_i)
 
         total_loss = torch.stack(losses).mean()
+        total_sat = torch.stack(sats).mean()
 
         stats = {}
         for i, (loss_i, sat_i) in enumerate(zip(losses, sats)):
-            stats[f"constraint_{i}_loss"] = float(loss_i.item())
-            stats[f"constraint_{i}_sat"] = float(sat_i.item())
+            stats[f"{self.constraint_names[i]}_loss"] = float(loss_i.item())
+            stats[f"{self.constraint_names[i]}_sat"] = float(sat_i.item())
+            stats[f"{self.constraint_names[i]}_active_frac"] = float(
+                self.constraints[i].postcondition.get_active_frac(x_batch)
+            )
 
-        return total_loss, stats
+        return total_loss, total_sat, stats
 
 
 # ============================================================
@@ -115,6 +119,35 @@ class DosHttpFloodRule(Postcondition):
         self.max_time_elapsed = max_time_elapsed
         self.min_flood_rate = min_flood_rate
 
+    def get_active_frac(self, x):
+        valid_input = finite_input(x)
+        valid_tcp = col(x, self.feat_idx, "valid_tcp_handshake_feature") > 0
+        valid_http = col(x, self.feat_idx, "service") >= 0
+        valid_duration = (
+            (col(x, self.feat_idx, "duration") >= self.min_duration)
+            & (col(x, self.feat_idx, "duration") <= self.max_duration)
+        )
+        valid_packet_size = (
+            (col(x, self.feat_idx, "orig_bytes") >= 0)
+            & (col(x, self.feat_idx, "resp_bytes") >= 0)
+            & (col(x, self.feat_idx, "orig_pkts") > 0)
+        )
+        valid_iat = col(x, self.feat_idx, "orig_pkt_rate") <= self.max_valid_pkt_rate
+
+        mal_time_elapsed = col(x, self.feat_idx, "time_elapsed") <= self.max_time_elapsed
+        mal_flood_rate = col(x, self.feat_idx, "flood_rate") >= self.min_flood_rate
+
+        antecedent = (
+            valid_input
+            & valid_tcp
+            & valid_http
+            & valid_duration
+            & valid_packet_size
+            & valid_iat
+            & (mal_time_elapsed | mal_flood_rate)
+        )
+        return antecedent.float().mean().item()
+
     def get_postcondition(self, N, x):
         probs = torch.softmax(N(x), dim=1)
 
@@ -173,6 +206,15 @@ class PortScanRule(Postcondition):
         self.max_scan_duration = max_scan_duration
         self.min_fail_ratio = min_fail_ratio
 
+    def get_active_frac(self, x):
+        many_ports = col(x, self.feat_idx, "uniq_dst_ports") >= self.min_ports
+        few_pkts = col(x, self.feat_idx, "pkts_per_port") <= self.max_pkts_per_port
+        short_scan = col(x, self.feat_idx, "scan_duration") <= self.max_scan_duration
+        high_fail = col(x, self.feat_idx, "fail_ratio") >= self.min_fail_ratio
+
+        antecedent = many_ports | few_pkts | short_scan | high_fail
+        return antecedent.float().mean().item()
+
     def get_postcondition(self, N, x):
         probs = torch.softmax(N(x), dim=1)
 
@@ -218,6 +260,20 @@ class DdosUdpFloodRule(Postcondition):
         self.min_udp_rate = min_udp_rate
         self.min_unique_src_ips = min_unique_src_ips
 
+    def get_active_frac(self, x):
+        is_udp = col(x, self.feat_idx, "proto") >= 0
+        udp_elapsed = (
+            (col(x, self.feat_idx, "duration") >= 0)
+            & (col(x, self.feat_idx, "duration") <= self.max_udp_duration)
+        )
+        udp_conn = col(x, self.feat_idx, "udp_conn_count") >= self.min_udp_conn_count
+        udp_packets = col(x, self.feat_idx, "udp_packets") >= self.min_udp_packets
+        udp_rate = col(x, self.feat_idx, "udp_rate") >= self.min_udp_rate
+        multi_source = col(x, self.feat_idx, "unique_src_ips") >= self.min_unique_src_ips
+
+        antecedent = is_udp & udp_elapsed & udp_conn & udp_packets & udp_rate & multi_source
+        return antecedent.float().mean().item()
+
     def get_postcondition(self, N, x):
         probs = torch.softmax(N(x), dim=1)
 
@@ -245,7 +301,8 @@ class DdosUdpFloodRule(Postcondition):
             return logic.IMPL(antecedent, dominates)
 
         return formula
-    
+
+
 # ============================================================
 # DDOS_SYN_FLOOD
 # ============================================================
@@ -270,6 +327,20 @@ class DdosSynFloodRule(Postcondition):
         self.min_syn_rate = min_syn_rate
         self.min_half_open_count = min_half_open_count
         self.min_source_ip_count = min_source_ip_count
+
+    def get_active_frac(self, x):
+        syn_elapsed = (
+            (col(x, self.feat_idx, "syn_duration") >= 0)
+            & (col(x, self.feat_idx, "syn_duration") <= self.max_syn_duration)
+        )
+        syn_conn = col(x, self.feat_idx, "syn_conn_count") >= self.min_syn_conn_count
+        syn_count = col(x, self.feat_idx, "syn_count") >= self.min_syn_count
+        syn_rate = col(x, self.feat_idx, "syn_rate") >= self.min_syn_rate
+        half_open = col(x, self.feat_idx, "half_open_count") >= self.min_half_open_count
+        multi_source = col(x, self.feat_idx, "source_ip_count") >= self.min_source_ip_count
+
+        antecedent = multi_source & syn_elapsed & syn_conn & syn_count & syn_rate & half_open
+        return antecedent.float().mean().item()
 
     def get_postcondition(self, N, x):
         probs = torch.softmax(N(x), dim=1)
@@ -310,7 +381,6 @@ def build_properties(
     feature_names: list[str],
     label_encoder
 ):
-    logic = logic or pml_logics.GoedelFuzzyLogic()
     feat_idx = get_feature_index_map(feature_names)
 
     def s(group: str, threshold_key: str, feature_name: str) -> float:
@@ -358,7 +428,6 @@ def build_properties(
             )
         )
         constraint_names.append("PORTSCAN")
-
 
     if "DDOS_UDP_FLOOD" in label_encoder.classes_ and all(
         f in feature_names for f in ["duration", "udp_conn_count", "udp_packets", "udp_rate", "unique_src_ips"]

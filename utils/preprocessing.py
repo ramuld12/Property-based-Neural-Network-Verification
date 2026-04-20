@@ -25,6 +25,7 @@ FEATURES = [
     "time_elapsed",
     "flood_rate",
     "valid_tcp_handshake_feature",
+    "is_http",
 
     # portscan features
     "uniq_dst_ports",
@@ -33,6 +34,7 @@ FEATURES = [
     "fail_ratio",
 
     # UDP flood feature
+    "is_udp",
     "udp_conn_count",
     "udp_packets",       
     "udp_rate",           

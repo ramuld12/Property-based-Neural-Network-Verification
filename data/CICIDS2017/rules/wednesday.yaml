@@ -19,7 +19,7 @@ attacks:
       - 192.168.10.50
 
   - name: DoS_Hulk
-    label: DoS-HTTP_Flood
+    label: DOS_HTTP_Flood
     start: "10:43:00"
     end: "11:00:00"
     attacker_ips:

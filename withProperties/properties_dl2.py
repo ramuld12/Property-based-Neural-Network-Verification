@@ -36,22 +36,24 @@ def class_margin(logits: torch.Tensor, target_idx: int) -> torch.Tensor:
     return target_logit - max_other
 
 
-def active_margin_loss(margin: torch.Tensor, active: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+def active_margin_loss(margin: torch.Tensor, active: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     loss: penalize negative margin for active samples
     sat: fraction of active samples with nonnegative margin
+    active_frac: fraction of batch where the rule antecedent is active
     """
     active = active.bool()
+    active_frac = active.float().mean()
 
     if active.sum() == 0:
         zero = torch.zeros((), device=margin.device)
         one = torch.ones((), device=margin.device)
-        return zero, one
+        return zero, one, active_frac
 
     active_margin = margin[active]
     loss = torch.relu(-active_margin).mean()
     sat = (active_margin >= 0).float().mean()
-    return loss, sat
+    return loss, sat, active_frac
 
 
 # ============================================================
@@ -72,14 +74,23 @@ class Dl2PropertyCollection:
         stats = {}
 
         for i, rule in enumerate(self.rules):
-            loss_i, sat_i = rule(logits, x_batch)
+            out = rule(logits, x_batch)
+            if len(out) == 3:
+                loss_i, sat_i, active_frac_i = out
+                extra = {}
+            else:
+                loss_i, sat_i, active_frac_i, extra = out
             losses.append(loss_i)
             sats.append(sat_i)
             stats[f"{self.rule_names[i]}_loss"] = float(loss_i.item())
             stats[f"{self.rule_names[i]}_sat"] = float(sat_i.item())
+            stats[f"{self.rule_names[i]}_active_frac"] = float(active_frac_i.item())
+            for k, v in extra.items():
+                stats[f"{self.rule_names[i]}_{k}"] = v
 
         total_loss = torch.stack(losses).mean() if losses else torch.zeros((), device=logits.device)
-        return total_loss, stats
+        total_sat = torch.stack(sats).mean() if sats else torch.ones((), device=logits.device)
+        return total_loss, total_sat, stats
 
 
 # ============================================================
@@ -95,8 +106,8 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
 
     def rule(logits, x):
         valid_input = torch.isfinite(feat(x)).all(dim=1)
-        valid_tcp = col(x, feat_idx, "valid_tcp_handshake_feature") > 0
-        valid_http = col(x, feat_idx, "service") >= 0
+        valid_tcp = col(x, feat_idx, "valid_tcp_handshake_feature") == 0
+        valid_http = col(x, feat_idx, "is_http") == 0
         valid_duration = (
             (col(x, feat_idx, "duration") >= min_duration)
             & (col(x, feat_idx, "duration") <= max_duration)
@@ -145,17 +156,49 @@ def build_portscan_rule(feat_idx, target_idx, scaler, feature_names):
 
     return rule
 
+
 def build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names):
-    max_udp_duration = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["max_udp_duration"], "duration", scaler, feature_names)
-    min_udp_conn_count = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["min_udp_conn_count"], "udp_conn_count", scaler, feature_names)
-    min_udp_packets = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["min_udp_packets"], "udp_packets", scaler, feature_names)
-    min_udp_rate = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["min_udp_rate"], "udp_rate", scaler, feature_names)
-    min_unique_src_ips = scaled_threshold(ATTACK_SPECS["ddos_udp_flood"]["min_unique_src_ips"], "unique_src_ips", scaler, feature_names)
+    min_udp_duration = scaled_threshold(
+        0.0,
+        "duration",
+        scaler,
+        feature_names,
+    )
+    max_udp_duration = scaled_threshold(
+        ATTACK_SPECS["ddos_udp_flood"]["max_udp_duration"],
+        "duration",
+        scaler,
+        feature_names,
+    )
+    min_udp_conn_count = scaled_threshold(
+        ATTACK_SPECS["ddos_udp_flood"]["min_udp_conn_count"],
+        "udp_conn_count",
+        scaler,
+        feature_names,
+    )
+    min_udp_packets = scaled_threshold(
+        ATTACK_SPECS["ddos_udp_flood"]["min_udp_packets"],
+        "udp_packets",
+        scaler,
+        feature_names,
+    )
+    min_udp_rate = scaled_threshold(
+        ATTACK_SPECS["ddos_udp_flood"]["min_udp_rate"],
+        "udp_rate",
+        scaler,
+        feature_names,
+    )
+    min_unique_src_ips = scaled_threshold(
+        ATTACK_SPECS["ddos_udp_flood"]["min_unique_src_ips"],
+        "unique_src_ips",
+        scaler,
+        feature_names,
+    )
 
     def rule(logits, x):
-        is_udp = col(x, feat_idx, "proto") >= 0
+        is_udp = col(x, feat_idx, "is_udp") == 1
         udp_elapsed = (
-            (col(x, feat_idx, "duration") >= 0)
+            (col(x, feat_idx, "duration") >= min_udp_duration)
             & (col(x, feat_idx, "duration") <= max_udp_duration)
         )
         udp_conn = col(x, feat_idx, "udp_conn_count") >= min_udp_conn_count
@@ -165,9 +208,21 @@ def build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names):
 
         active = is_udp & udp_elapsed & udp_conn & udp_packets & udp_rate & multi_source
         margin = class_margin(logits, target_idx)
-        return active_margin_loss(margin, active)
+        loss, sat, active_frac = active_margin_loss(margin, active)
+
+        extra = {
+            "is_udp_frac": float(is_udp.float().mean().item()),
+            "udp_elapsed_frac": float(udp_elapsed.float().mean().item()),
+            "udp_conn_frac": float(udp_conn.float().mean().item()),
+            "udp_packets_frac": float(udp_packets.float().mean().item()),
+            "udp_rate_frac": float(udp_rate.float().mean().item()),
+            "multi_source_frac": float(multi_source.float().mean().item()),
+        }
+
+        return loss, sat, active_frac, extra
 
     return rule
+
 
 def build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names):
     max_syn_duration = scaled_threshold(
