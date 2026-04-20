@@ -106,8 +106,8 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
 
     def rule(logits, x):
         valid_input = torch.isfinite(feat(x)).all(dim=1)
-        valid_tcp = col(x, feat_idx, "valid_tcp_handshake_feature") == 0
-        valid_http = col(x, feat_idx, "is_http") == 0
+        valid_tcp_handshake = col(x, feat_idx, "valid_tcp_handshake_feature") >= 0.5
+        valid_http = col(x, feat_idx, "is_http") >= 0.5
         valid_duration = (
             (col(x, feat_idx, "duration") >= min_duration)
             & (col(x, feat_idx, "duration") <= max_duration)
@@ -124,7 +124,7 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
 
         active = (
             valid_input
-            & valid_tcp
+            & valid_tcp_handshake
             & valid_http
             & valid_duration
             & valid_packet_size
@@ -133,7 +133,20 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
         )
 
         margin = class_margin(logits, target_idx)
-        return active_margin_loss(margin, active)
+        loss, sat, active_frac = active_margin_loss(margin, active)
+
+        extra = {
+            "valid_input_frac": float(valid_input.float().mean().item()),
+            "valid_tcp_handshake_frac": float(valid_tcp_handshake.float().mean().item()),
+            "valid_http_frac": float(valid_http.float().mean().item()),
+            "valid_duration_frac": float(valid_duration.float().mean().item()),
+            "valid_packet_size_frac": float(valid_packet_size.float().mean().item()),
+            "valid_iat_frac": float(valid_iat.float().mean().item()),
+            "mal_time_elapsed_frac": float(mal_time_elapsed.float().mean().item()),
+            "mal_flood_rate_frac": float(mal_flood_rate.float().mean().item()),
+        }
+
+        return loss, sat, active_frac, extra
 
     return rule
 
@@ -196,7 +209,7 @@ def build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names):
     )
 
     def rule(logits, x):
-        is_udp = col(x, feat_idx, "is_udp") == 1
+        is_udp = col(x, feat_idx, "is_udp") >= 0.5
         udp_elapsed = (
             (col(x, feat_idx, "duration") >= min_udp_duration)
             & (col(x, feat_idx, "duration") <= max_udp_duration)
@@ -225,6 +238,12 @@ def build_ddos_udp_rule(feat_idx, target_idx, scaler, feature_names):
 
 
 def build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names):
+    min_syn_duration = scaled_threshold(
+        0.0, 
+        "syn_duration", 
+        scaler, 
+        feature_names
+    )
     max_syn_duration = scaled_threshold(
         ATTACK_SPECS["ddos_syn_flood"]["max_syn_duration"],
         "syn_duration",
@@ -264,7 +283,7 @@ def build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names):
 
     def rule(logits, x):
         syn_elapsed = (
-            (col(x, feat_idx, "syn_duration") >= 0)
+            (col(x, feat_idx, "syn_duration") >= min_syn_duration)
             & (col(x, feat_idx, "syn_duration") <= max_syn_duration)
         )
         syn_conn = col(x, feat_idx, "syn_conn_count") >= min_syn_conn_count
@@ -275,7 +294,18 @@ def build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names):
 
         active = syn_elapsed & syn_conn & syn_count & syn_rate & half_open & multi_source
         margin = class_margin(logits, target_idx)
-        return active_margin_loss(margin, active)
+        loss, sat, active_frac = active_margin_loss(margin, active)
+
+        extra = {
+            "syn_elapsed_frac": float(syn_elapsed.float().mean().item()),
+            "syn_conn_frac": float(syn_conn.float().mean().item()),
+            "syn_count_frac": float(syn_count.float().mean().item()),
+            "syn_rate_frac": float(syn_rate.float().mean().item()),
+            "half_open_frac": float(half_open.float().mean().item()),
+            "multi_source_frac": float(multi_source.float().mean().item()),
+        }
+
+        return loss, sat, active_frac, extra
 
     return rule
 
