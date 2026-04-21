@@ -127,7 +127,7 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
             & valid_tcp_handshake
             & valid_http
             & valid_duration
-            & valid_packet_size
+            # & valid_packet_size
             & valid_iat
             & (mal_time_elapsed | mal_flood_rate)
         )
@@ -140,7 +140,7 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
             "valid_tcp_handshake_frac": float(valid_tcp_handshake.float().mean().item()),
             "valid_http_frac": float(valid_http.float().mean().item()),
             "valid_duration_frac": float(valid_duration.float().mean().item()),
-            "valid_packet_size_frac": float(valid_packet_size.float().mean().item()),
+            # "valid_packet_size_frac": float(valid_packet_size.float().mean().item()),
             "valid_iat_frac": float(valid_iat.float().mean().item()),
             "mal_time_elapsed_frac": float(mal_time_elapsed.float().mean().item()),
             "mal_flood_rate_frac": float(mal_flood_rate.float().mean().item()),

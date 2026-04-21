@@ -83,3 +83,6 @@ def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):
     X_bal = balanced_df.drop(columns=[label_col])
     y_bal = balanced_df[label_col]
     return X_bal, y_bal
+
+def filter_labels(df, target_labels):
+    return df[df["label"].isin(target_labels)].copy()
