@@ -121,7 +121,7 @@ class DosHttpFloodRule(Postcondition):
 
     def get_active_frac(self, x):
         valid_input = finite_input(x)
-        valid_tcp = col(x, self.feat_idx, "valid_tcp_handshake_feature") > 0
+        valid_tcp = col(x, self.feat_idx, "valid_tcp_handshake") > 0
         valid_http = col(x, self.feat_idx, "service") >= 0
         valid_duration = (
             (col(x, self.feat_idx, "duration") >= self.min_duration)
@@ -152,7 +152,7 @@ class DosHttpFloodRule(Postcondition):
         probs = torch.softmax(N(x), dim=1)
 
         valid_input = finite_input(x)
-        valid_tcp = col(x, self.feat_idx, "valid_tcp_handshake_feature") > 0
+        valid_tcp = col(x, self.feat_idx, "valid_tcp_handshake") > 0
         valid_http = col(x, self.feat_idx, "service") >= 0
         valid_duration = (
             (col(x, self.feat_idx, "duration") >= self.min_duration)

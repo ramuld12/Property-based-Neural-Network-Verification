@@ -1,5 +1,7 @@
 """Model evaluation utilities."""
 
+from pyexpat import features
+
 import numpy as np
 import pandas as pd
 import joblib
@@ -7,6 +9,7 @@ import torch
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from utils.preprocessing import PROPERTY_BOOLEAN_FEATURES
 import os
 
 
@@ -99,20 +102,26 @@ def load_and_evaluate_model(
     categorical_cols = joblib_object.get("categorical_cols")
 
     X = X.copy()
-
-    if features:
-        X = X[features]
+    X = X[features].copy()
 
     if categorical_cols:
         X[categorical_cols] = ordinal_encoder.transform(X[categorical_cols])
 
     X_scaled_df = X.copy()
+    continuous_cols = [c for c in features if c not in PROPERTY_BOOLEAN_FEATURES]
+    
+    for col in continuous_cols:
+        X_scaled_df[col] = pd.to_numeric(X_scaled_df[col], errors="coerce")
+    
 
-    if scaler is not None:
-        X_scaled_df[features] = scaler.transform(X[features])
+    X_scaled_df[continuous_cols] = X_scaled_df[continuous_cols].replace([np.inf, -np.inf], np.nan)
+    X_scaled_df[continuous_cols] = X_scaled_df[continuous_cols].fillna(0.0)
 
-        binary_cols = [c for c in ["valid_tcp_handshake_feature", "is_udp", "is_http"] if c in features]
-        for col in binary_cols:
+    if scaler is not None and len(continuous_cols) > 0:
+        X_scaled_df[continuous_cols] = scaler.transform(X_scaled_df[continuous_cols])
+
+    for col in PROPERTY_BOOLEAN_FEATURES:
+        if col in X.columns:
             X_scaled_df[col] = X[col].values
 
     X_np = X_scaled_df[features].values.astype(np.float32)

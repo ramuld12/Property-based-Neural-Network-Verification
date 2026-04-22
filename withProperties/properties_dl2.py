@@ -97,37 +97,23 @@ class Dl2PropertyCollection:
 # RULE BUILDERS
 # ============================================================
 
-def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
-    min_duration = scaled_threshold(ATTACK_SPECS["dos_http_flood"]["min_duration"], "duration", scaler, feature_names)
-    max_duration = scaled_threshold(ATTACK_SPECS["dos_http_flood"]["max_duration"], "duration", scaler, feature_names)
-    max_valid_pkt_rate = scaled_threshold(ATTACK_SPECS["dos_http_flood"]["max_valid_pkt_rate"], "orig_pkt_rate", scaler, feature_names)
-    max_time_elapsed = scaled_threshold(ATTACK_SPECS["dos_http_flood"]["max_time_elapsed"], "time_elapsed", scaler, feature_names)
-    min_flood_rate = scaled_threshold(ATTACK_SPECS["dos_http_flood"]["min_flood_rate"], "flood_rate", scaler, feature_names)
-
+def build_dos_http_rule(feat_idx, target_idx):
     def rule(logits, x):
-        valid_input = torch.isfinite(feat(x)).all(dim=1)
-        valid_tcp_handshake = col(x, feat_idx, "valid_tcp_handshake_feature") >= 0.5
-        valid_http = col(x, feat_idx, "is_http") >= 0.5
-        valid_duration = (
-            (col(x, feat_idx, "duration") >= min_duration)
-            & (col(x, feat_idx, "duration") <= max_duration)
-        )
-        valid_packet_size = (
-            (col(x, feat_idx, "orig_bytes") >= 0)
-            & (col(x, feat_idx, "resp_bytes") >= 0)
-            & (col(x, feat_idx, "orig_pkts") > 0)
-        )
-        valid_iat = col(x, feat_idx, "orig_pkt_rate") <= max_valid_pkt_rate
-
-        mal_time_elapsed = col(x, feat_idx, "time_elapsed") <= max_time_elapsed
-        mal_flood_rate = col(x, feat_idx, "flood_rate") >= min_flood_rate
+        valid_input = col(x, feat_idx, "valid_input") == 1
+        valid_tcp_handshake = col(x, feat_idx, "valid_tcp_handshake") == 1
+        valid_http = col(x, feat_idx, "is_http") == 1
+        valid_duration = col(x, feat_idx, "valid_duration") == 1
+        valid_packet_size = col(x, feat_idx, "valid_packet_size") == 1
+        valid_iat = col(x, feat_idx, "valid_iat") == 1
+        mal_time_elapsed = col(x, feat_idx, "dos_http_mal_time_elapsed") == 1
+        mal_flood_rate = col(x, feat_idx, "dos_http_mal_flood_rate") == 1
 
         active = (
             valid_input
             & valid_tcp_handshake
             & valid_http
             & valid_duration
-            # & valid_packet_size
+            & valid_packet_size
             & valid_iat
             & (mal_time_elapsed | mal_flood_rate)
         )
@@ -136,14 +122,14 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
         loss, sat, active_frac = active_margin_loss(margin, active)
 
         extra = {
-            "valid_input_frac": float(valid_input.float().mean().item()),
-            "valid_tcp_handshake_frac": float(valid_tcp_handshake.float().mean().item()),
-            "valid_http_frac": float(valid_http.float().mean().item()),
-            "valid_duration_frac": float(valid_duration.float().mean().item()),
-            # "valid_packet_size_frac": float(valid_packet_size.float().mean().item()),
-            "valid_iat_frac": float(valid_iat.float().mean().item()),
-            "mal_time_elapsed_frac": float(mal_time_elapsed.float().mean().item()),
-            "mal_flood_rate_frac": float(mal_flood_rate.float().mean().item()),
+            "valid_input_frac": valid_input.float().mean().item(),
+            "valid_tcp_handshake_frac": valid_tcp_handshake.float().mean().item(),
+            "valid_http_frac": valid_http.float().mean().item(),
+            "valid_duration_frac": valid_duration.float().mean().item(),
+            "valid_packet_size_frac": valid_packet_size.float().mean().item(),
+            "valid_iat_frac": valid_iat.float().mean().item(),
+            "mal_time_elapsed_frac": mal_time_elapsed.float().mean().item(),
+            "mal_flood_rate_frac": mal_flood_rate.float().mean().item(),
         }
 
         return loss, sat, active_frac, extra
@@ -151,21 +137,26 @@ def build_dos_http_rule(feat_idx, target_idx, scaler, feature_names):
     return rule
 
 
-def build_portscan_rule(feat_idx, target_idx, scaler, feature_names):
-    min_ports = scaled_threshold(ATTACK_SPECS["portscan"]["min_ports"], "uniq_dst_ports", scaler, feature_names)
-    max_pkts_per_port = scaled_threshold(ATTACK_SPECS["portscan"]["max_pkts_per_port"], "pkts_per_port", scaler, feature_names)
-    max_scan_duration = scaled_threshold(ATTACK_SPECS["portscan"]["max_scan_duration"], "scan_duration", scaler, feature_names)
-    min_fail_ratio = scaled_threshold(ATTACK_SPECS["portscan"]["min_fail_ratio"], "fail_ratio", scaler, feature_names)
-
+def build_portscan_rule(feat_idx, target_idx):
     def rule(logits, x):
-        many_ports = col(x, feat_idx, "uniq_dst_ports") >= min_ports
-        few_pkts = col(x, feat_idx, "pkts_per_port") <= max_pkts_per_port
-        short_scan = col(x, feat_idx, "scan_duration") <= max_scan_duration
-        high_fail = col(x, feat_idx, "fail_ratio") >= min_fail_ratio
+        many_ports = col(x, feat_idx, "portscan_many_ports") > 0.5
+        few_pkts = col(x, feat_idx, "portscan_few_pkts_per_port") > 0.5
+        short_scan = col(x, feat_idx, "portscan_short_duration") > 0.5
+        high_fail = col(x, feat_idx, "portscan_high_fail_ratio") > 0.5
 
         active = many_ports | few_pkts | short_scan | high_fail
+
         margin = class_margin(logits, target_idx)
-        return active_margin_loss(margin, active)
+        loss, sat, active_frac = active_margin_loss(margin, active)
+
+        extra = {
+            "many_ports_frac": many_ports.float().mean().item(),
+            "few_pkts_frac": few_pkts.float().mean().item(),
+            "short_scan_frac": short_scan.float().mean().item(),
+            "high_fail_frac": high_fail.float().mean().item(),
+        }
+
+        return loss, sat, active_frac, extra
 
     return rule
 
@@ -319,7 +310,7 @@ def build_properties(
     scaler,
     feature_names: list[str],
     label_encoder,
-    logic=None,   # kept for factory compatibility
+    logic=None, 
 ):
     feat_idx = get_feature_index_map(feature_names)
     rules = []
@@ -327,12 +318,12 @@ def build_properties(
 
     if "DOS_HTTP_FLOOD" in label_encoder.classes_:
         target_idx = int(label_encoder.transform(["DOS_HTTP_FLOOD"])[0])
-        rules.append(build_dos_http_rule(feat_idx, target_idx, scaler, feature_names))
+        rules.append(build_dos_http_rule(feat_idx, target_idx))
         rule_names.append("DOS_HTTP_FLOOD")
 
     if "PORTSCAN" in label_encoder.classes_:
         target_idx = int(label_encoder.transform(["PORTSCAN"])[0])
-        rules.append(build_portscan_rule(feat_idx, target_idx, scaler, feature_names))
+        rules.append(build_portscan_rule(feat_idx, target_idx))
         rule_names.append("PORTSCAN")
 
     if "DDOS_UDP_FLOOD" in label_encoder.classes_ and all(

@@ -3,51 +3,101 @@
 import numpy as np
 import pandas as pd
 
-FEATURES = [
-    "proto",
-    "service",
+# FEATURES = [
+#     "proto",
+#     "service",
+#     "duration",
+#     "orig_bytes",
+#     "resp_bytes",
+#     "conn_state",
+#     "missed_bytes",
+#     "history",
+#     "orig_pkts",
+#     "orig_ip_bytes",
+#     "resp_pkts",
+#     "resp_ip_bytes",
+
+#     # shared engineered features
+#     "orig_pkt_rate",
+#     "orig_byte_rate",
+#     "pkt_asymmetry",
+#     "byte_asymmetry",
+#     "time_elapsed",
+#     "flood_rate",
+#     "valid_tcp_handshake",
+#     "is_http",
+
+#     # portscan features
+#     "uniq_dst_ports",
+#     "pkts_per_port",
+#     "scan_duration",
+#     "fail_ratio",
+
+#     # # UDP flood feature
+#     # "is_udp",
+#     # "udp_conn_count",
+#     # "udp_packets",       
+#     # "udp_rate",           
+#     # "unique_src_ips",   
+
+#     # # SYN flood features
+#     # "syn_duration",
+#     # "syn_conn_count",
+#     # "syn_count",
+#     # "syn_rate",
+#     # "half_open_count",
+#     # "source_ip_count",
+# ]
+
+MODEL_NUMERIC_FEATURES = [
     "duration",
     "orig_bytes",
     "resp_bytes",
-    "conn_state",
     "missed_bytes",
-    "history",
     "orig_pkts",
     "orig_ip_bytes",
     "resp_pkts",
     "resp_ip_bytes",
-
-    # shared engineered features
     "orig_pkt_rate",
     "orig_byte_rate",
     "pkt_asymmetry",
     "byte_asymmetry",
     "time_elapsed",
     "flood_rate",
-    "valid_tcp_handshake_feature",
-    "is_http",
-
-    # portscan features
     "uniq_dst_ports",
     "pkts_per_port",
     "scan_duration",
     "fail_ratio",
-
-    # UDP flood feature
-    "is_udp",
-    "udp_conn_count",
-    "udp_packets",       
-    "udp_rate",           
-    "unique_src_ips",   
-
-    # SYN flood features
-    "syn_duration",
-    "syn_conn_count",
-    "syn_count",
-    "syn_rate",
-    "half_open_count",
-    "source_ip_count",
 ]
+
+MODEL_CATEGORICAL_FEATURES = [
+    "proto",
+    "service",
+    "conn_state",
+    "history",
+]
+
+PROPERTY_BOOLEAN_FEATURES = [
+    "is_tcp",
+    "is_http",
+    "valid_input",
+    "valid_tcp_handshake",
+    "valid_duration",
+    "valid_packet_size",
+    "valid_iat",
+    "dos_http_mal_time_elapsed",
+    "dos_http_mal_flood_rate",
+    "portscan_many_ports",
+    "portscan_few_pkts_per_port",
+    "portscan_short_duration",
+    "portscan_high_fail_ratio",
+]
+
+FEATURES = (
+    MODEL_CATEGORICAL_FEATURES
+    + MODEL_NUMERIC_FEATURES
+    + PROPERTY_BOOLEAN_FEATURES
+)
 
 def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):
     """Balance dataset by downsampling to minority class size.
@@ -83,6 +133,25 @@ def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):
     X_bal = balanced_df.drop(columns=[label_col])
     y_bal = balanced_df[label_col]
     return X_bal, y_bal
+
+def balance_df(df: pd.DataFrame, frac: float = 1.0) -> pd.DataFrame:
+    min_count = df["label"].value_counts().min()
+    min_count = int(min_count * frac)
+    print(f"Balancing dataset to {min_count} rows per class")
+
+    sampled_idx = (
+        df.groupby("label")
+        .sample(n=min_count, random_state=42)
+        .index
+    )
+
+    balanced_df = (
+        df.loc[sampled_idx]
+        .sample(frac=1, random_state=42)
+        .reset_index(drop=True)
+    )
+
+    return balanced_df
 
 def filter_labels(df, target_labels):
     return df[df["label"].isin(target_labels)].copy()
