@@ -79,7 +79,7 @@ MODEL_CATEGORICAL_FEATURES = [
 
 PROPERTY_BOOLEAN_FEATURES = [
     "is_tcp",
-    "is_http",
+    "valid_http_conn",
     "valid_input",
     "valid_tcp_handshake",
     "valid_duration",
