@@ -164,3 +164,6 @@ data/CICIoT2023/*.csv
 # Zeek logs and TSVs
 *.log
 *.tsv
+
+pcap2csv/*
+pcap2csv.zip
