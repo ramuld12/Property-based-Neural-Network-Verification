@@ -98,8 +98,17 @@ def load_and_evaluate_model(
     ordinal_encoder = joblib_object.get("ordinal_encoder")
     scaler = joblib_object.get("scaler")
     label_encoder = joblib_object.get("label_encoder")
-    features = joblib_object.get("features")
-    categorical_cols = joblib_object.get("categorical_cols")
+
+    features = joblib_object["features"]
+    categorical_cols = joblib_object.get("categorical_cols", [])
+    continuous_cols = joblib_object.get("continuous_cols")
+    binary_cols = joblib_object.get("binary_cols")
+
+    if binary_cols is None:
+        binary_cols = [c for c in PROPERTY_BOOLEAN_FEATURES if c in features]
+
+    if continuous_cols is None:
+        continuous_cols = [c for c in features if c not in binary_cols]
 
     X = X.copy()
     X = X[features].copy()
@@ -107,22 +116,20 @@ def load_and_evaluate_model(
     if categorical_cols:
         X[categorical_cols] = ordinal_encoder.transform(X[categorical_cols])
 
-    X_scaled_df = X.copy()
-    continuous_cols = [c for c in features if c not in PROPERTY_BOOLEAN_FEATURES]
-    
-    for col in continuous_cols:
-        X_scaled_df[col] = pd.to_numeric(X_scaled_df[col], errors="coerce")
-    
+    X[continuous_cols] = X[continuous_cols].apply(pd.to_numeric, errors="coerce")
+    X[continuous_cols] = X[continuous_cols].replace([np.inf, -np.inf], np.nan)
+    X[continuous_cols] = X[continuous_cols].fillna(0.0)
 
-    X_scaled_df[continuous_cols] = X_scaled_df[continuous_cols].replace([np.inf, -np.inf], np.nan)
-    X_scaled_df[continuous_cols] = X_scaled_df[continuous_cols].fillna(0.0)
+    X[binary_cols] = X[binary_cols].apply(pd.to_numeric, errors="coerce")
+    X[binary_cols] = X[binary_cols].fillna(0).astype(int)
+
+    X_scaled_df = X.copy()
 
     if scaler is not None and len(continuous_cols) > 0:
-        X_scaled_df[continuous_cols] = scaler.transform(X_scaled_df[continuous_cols])
+        X_scaled_df[continuous_cols] = scaler.transform(X[continuous_cols])
 
-    for col in PROPERTY_BOOLEAN_FEATURES:
-        if col in X.columns:
-            X_scaled_df[col] = X[col].values
+    for col in binary_cols:
+        X_scaled_df[col] = X[col].values
 
     X_np = X_scaled_df[features].values.astype(np.float32)
 
@@ -137,20 +144,29 @@ def load_and_evaluate_model(
     # ==================================================
     else:
         if device is None:
-            device = next(model.parameters()).device
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        X_tensor = torch.tensor(X_np).unsqueeze(1)
+        model = model.to(device)
+        model.eval()
+
+        X_tensor = torch.tensor(X_np, dtype=torch.float32).unsqueeze(1)
 
         preds_all = []
-        model.eval()
 
         with torch.no_grad():
             for i in range(0, len(X_tensor), batch_size):
-                xb = X_tensor[i:i+batch_size].to(device)
+                xb = X_tensor[i:i + batch_size].to(device)
+
                 logits = model(xb)
                 preds = torch.argmax(logits, dim=1).cpu().numpy()
+
                 preds_all.extend(preds)
 
         y_pred = label_encoder.inverse_transform(np.array(preds_all))
 
-    evaluate_model(y_true, y_pred, model_name=model_name, path_to_save=path_to_save)
+    return evaluate_model(
+        y_true,
+        y_pred,
+        model_name=model_name,
+        path_to_save=path_to_save,
+    )

@@ -72,3 +72,38 @@ def build_model(model_type: str, n_features: int, num_classes: int) -> nn.Module
             n_features=n_features,
             num_classes=num_classes,
         )
+    
+# Maybe new MLP
+# class MLP(nn.Module):
+#     def __init__(
+#         self,
+#         n_features: int,
+#         num_classes: int,
+#         hidden_dim: int = 128,
+#         dropout: float = 0.25,
+#     ):
+#         super().__init__()
+
+#         self.net = nn.Sequential(
+#             nn.Linear(n_features, hidden_dim),
+#             nn.BatchNorm1d(hidden_dim),
+#             nn.ReLU(),
+#             nn.Dropout(dropout),
+
+#             nn.Linear(hidden_dim, hidden_dim),
+#             nn.BatchNorm1d(hidden_dim),
+#             nn.ReLU(),
+#             nn.Dropout(dropout),
+
+#             nn.Linear(hidden_dim, hidden_dim // 2),
+#             nn.BatchNorm1d(hidden_dim // 2),
+#             nn.ReLU(),
+#             nn.Dropout(dropout),
+
+#             nn.Linear(hidden_dim // 2, num_classes),
+#         )
+
+#     def forward(self, x):
+#         # x: [B, 1, n_features]
+#         x = x.squeeze(1)
+#         return self.net(x)

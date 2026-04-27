@@ -3,51 +3,37 @@
 import numpy as np
 import pandas as pd
 
-# FEATURES = [
-#     "proto",
-#     "service",
-#     "duration",
-#     "orig_bytes",
-#     "resp_bytes",
-#     "conn_state",
-#     "missed_bytes",
-#     "history",
-#     "orig_pkts",
-#     "orig_ip_bytes",
-#     "resp_pkts",
-#     "resp_ip_bytes",
+BASE_ZEEK_FEATURES = [
+    "ts",
+    "uid",
+    "id.orig_h",
+    "id.orig_p",
+    "id.resp_h",
+    "id.resp_p",
+    "proto",
+    "service",
+    "duration",
+    "orig_bytes",
+    "resp_bytes",
+    "conn_state",
+    "local_orig",
+    "local_resp",
+    "missed_bytes",
+    "history",
+    "orig_pkts",
+    "orig_ip_bytes",
+    "resp_pkts",
+    "resp_ip_bytes",
+    "tunnel_parents",
+    "ip_proto",
+]
 
-#     # shared engineered features
-#     "orig_pkt_rate",
-#     "orig_byte_rate",
-#     "pkt_asymmetry",
-#     "byte_asymmetry",
-#     "time_elapsed",
-#     "flood_rate",
-#     "valid_tcp_handshake",
-#     "is_http",
-
-#     # portscan features
-#     "uniq_dst_ports",
-#     "pkts_per_port",
-#     "scan_duration",
-#     "fail_ratio",
-
-#     # # UDP flood feature
-#     # "is_udp",
-#     # "udp_conn_count",
-#     # "udp_packets",       
-#     # "udp_rate",           
-#     # "unique_src_ips",   
-
-#     # # SYN flood features
-#     # "syn_duration",
-#     # "syn_conn_count",
-#     # "syn_count",
-#     # "syn_rate",
-#     # "half_open_count",
-#     # "source_ip_count",
-# ]
+MODEL_CATEGORICAL_FEATURES = [
+    "proto",
+    "service",
+    "conn_state",
+    "history",
+]
 
 MODEL_NUMERIC_FEATURES = [
     "duration",
@@ -58,24 +44,17 @@ MODEL_NUMERIC_FEATURES = [
     "orig_ip_bytes",
     "resp_pkts",
     "resp_ip_bytes",
+]
+
+ENGINEERED_FEATURES = [
     "orig_pkt_rate",
     "orig_byte_rate",
     "pkt_asymmetry",
     "byte_asymmetry",
     "time_elapsed",
-    "flood_rate",
-    "uniq_dst_ports",
-    "pkts_per_port",
-    "scan_duration",
-    "fail_ratio",
+    "flood_rate"
 ]
 
-MODEL_CATEGORICAL_FEATURES = [
-    "proto",
-    "service",
-    "conn_state",
-    "history",
-]
 
 PROPERTY_BOOLEAN_FEATURES = [
     "is_tcp",
