@@ -8,6 +8,7 @@ def build_properties(
     scaler,
     feature_names,
     label_encoder,
+    model_feature_names,
 ):
     logic_name = logic.name
     print(f"Building properties for logic: {logic_name}")
@@ -15,6 +16,12 @@ def build_properties(
     #     return build_godel_properties(device, scaler, feature_names, label_encoder)
 
     if logic_name == pml_logics.DL2().name:
-        return build_dl2_properties(device, scaler, feature_names, label_encoder)
+        return build_dl2_properties(
+            device=device,
+            scaler=scaler,
+            feature_names=feature_names,
+            label_encoder=label_encoder,
+            model_feature_names=model_feature_names,
+        )
 
     raise ValueError(f"Unknown property logic: {logic.name}")

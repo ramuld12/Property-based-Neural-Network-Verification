@@ -36,7 +36,7 @@ def class_margin(logits: torch.Tensor, target_idx: int) -> torch.Tensor:
     return target_logit - max_other
 
 
-def active_margin_loss(margin: torch.Tensor, active: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def active_margin_loss(margin: torch.Tensor, active: torch.Tensor, required_margin: float = 1.0) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     loss: penalize negative margin for active samples
     sat: fraction of active samples with nonnegative margin
@@ -51,8 +51,8 @@ def active_margin_loss(margin: torch.Tensor, active: torch.Tensor) -> tuple[torc
         return zero, one, active_frac
 
     active_margin = margin[active]
-    loss = torch.relu(-active_margin).mean()
-    sat = (active_margin >= 0).float().mean()
+    loss = torch.relu(required_margin - active_margin).mean()
+    sat = (active_margin >= required_margin).float().mean()
     return loss, sat, active_frac
 
 
@@ -61,37 +61,46 @@ def active_margin_loss(margin: torch.Tensor, active: torch.Tensor) -> tuple[torc
 # ============================================================
 
 class Dl2PropertyCollection:
-    def __init__(self, rules, rule_names):
+    def __init__(self, rules, rule_names, model_feature_indices=None):
         self.rules = rules
         self.rule_names = rule_names
         self.logic = pml_logics.DL2()
+        self.model_feature_indices = model_feature_indices
 
-    def compute_loss(self, model, x_batch):
-        logits = model(x_batch)
+    def get_model_input(self, x_property):
+        return x_property[:, :, self.model_feature_indices]
+
+    def compute_loss(self, model, x_property):
+        x_model = self.get_model_input(x_property)
+        logits = model(x_model)
 
         losses = []
         sats = []
         stats = {}
 
         for i, rule in enumerate(self.rules):
-            out = rule(logits, x_batch)
+            out = rule(logits, x_property)
+
             if len(out) == 3:
                 loss_i, sat_i, active_frac_i = out
                 extra = {}
             else:
                 loss_i, sat_i, active_frac_i, extra = out
+
             losses.append(loss_i)
             sats.append(sat_i)
+
             stats[f"{self.rule_names[i]}_loss"] = float(loss_i.item())
             stats[f"{self.rule_names[i]}_sat"] = float(sat_i.item())
             stats[f"{self.rule_names[i]}_active_frac"] = float(active_frac_i.item())
+
             for k, v in extra.items():
                 stats[f"{self.rule_names[i]}_{k}"] = v
 
         total_loss = torch.stack(losses).mean() if losses else torch.zeros((), device=logits.device)
         total_sat = torch.stack(sats).mean() if sats else torch.ones((), device=logits.device)
-        return total_loss, total_sat, stats
 
+        return total_loss, total_sat, stats
 
 # ============================================================
 # RULE BUILDERS
@@ -310,18 +319,42 @@ def build_properties(
     scaler,
     feature_names: list[str],
     label_encoder,
-    logic=None, 
+    logic=None,
+    model_feature_names: list[str] | None = None,
 ):
     feat_idx = get_feature_index_map(feature_names)
+
+    model_feature_indices = [
+        feature_names.index(name)
+        for name in model_feature_names
+    ]
+
     rules = []
     rule_names = []
 
-    if "DOS_HTTP_FLOOD" in label_encoder.classes_:
+    classes = set(label_encoder.classes_)
+
+    # ============================================================
+    # Binary case: BENIGN vs ATTACK
+    # ============================================================
+    if "ATTACK" in classes:
+        attack_idx = int(label_encoder.transform(["ATTACK"])[0])
+
+        rules.append(build_dos_http_rule(feat_idx, attack_idx))
+        rule_names.append("DOS_HTTP_ATTACK")
+
+        rules.append(build_portscan_rule(feat_idx, attack_idx))
+        rule_names.append("PORTSCAN_ATTACK")
+
+    # ============================================================
+    # Multiclass case
+    # ============================================================
+    if "DOS_HTTP_FLOOD" in classes:
         target_idx = int(label_encoder.transform(["DOS_HTTP_FLOOD"])[0])
         rules.append(build_dos_http_rule(feat_idx, target_idx))
         rule_names.append("DOS_HTTP_FLOOD")
 
-    if "PORTSCAN" in label_encoder.classes_:
+    if "PORTSCAN" in classes:
         target_idx = int(label_encoder.transform(["PORTSCAN"])[0])
         rules.append(build_portscan_rule(feat_idx, target_idx))
         rule_names.append("PORTSCAN")
@@ -347,4 +380,8 @@ def build_properties(
     #     rules.append(build_ddos_syn_rule(feat_idx, target_idx, scaler, feature_names))
     #     rule_names.append("DDOS_SYN_FLOOD")
 
-    return Dl2PropertyCollection(rules, rule_names)
+    return Dl2PropertyCollection(
+        rules=rules,
+        rule_names=rule_names,
+        model_feature_indices=model_feature_indices,
+    )

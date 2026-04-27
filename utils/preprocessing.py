@@ -55,6 +55,13 @@ ENGINEERED_FEATURES = [
     "flood_rate"
 ]
 
+PORTSCAN_FEATURES = [
+    "uniq_dst_ports",
+    "pkts_per_port",
+    "scan_duration",
+    "fail_ratio"
+]
+
 
 PROPERTY_BOOLEAN_FEATURES = [
     "is_tcp",
@@ -71,12 +78,6 @@ PROPERTY_BOOLEAN_FEATURES = [
     "portscan_short_duration",
     "portscan_high_fail_ratio",
 ]
-
-FEATURES = (
-    MODEL_CATEGORICAL_FEATURES
-    + MODEL_NUMERIC_FEATURES
-    + PROPERTY_BOOLEAN_FEATURES
-)
 
 def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):
     """Balance dataset by downsampling to minority class size.
