@@ -2,8 +2,8 @@ attacks:
 
   - name: DoS_Slowloris
     label: DOS_SLOWLORIS
-    start: "09:47:00"
-    end: "10:10:00"
+    start: "09:48:54"
+    end: "11:20:08"
     attacker_ips:
       - 172.16.0.1
     victim_ips:
@@ -20,8 +20,8 @@ attacks:
 
   - name: DoS_Hulk
     label: DOS_HTTP_Flood
-    start: "10:43:00"
-    end: "11:00:00"
+    start: "10:43:23"
+    end: "11:07:21"
     attacker_ips:
       - 172.16.0.1
     victim_ips:
@@ -29,8 +29,8 @@ attacks:
 
   - name: DoS_GoldenEye
     label: DOS_GOLDENEYE
-    start: "11:10:00"
-    end: "11:35:00"
+    start: "11:10:03"
+    end: "11:20:08"
     attacker_ips:
       - 172.16.0.1
     victim_ips:
