@@ -49,8 +49,6 @@ MODEL_NUMERIC_FEATURES = [
 ENGINEERED_FEATURES = [
     "orig_pkt_rate",
     "orig_byte_rate",
-    "pkt_asymmetry",
-    "byte_asymmetry",
     "time_elapsed",
     "flood_rate"
 ]

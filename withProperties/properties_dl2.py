@@ -3,8 +3,6 @@ from __future__ import annotations
 import torch
 import property_driven_ml.logics as pml_logics
 
-# from specs import ATTACK_SPECS
-
 
 # ============================================================
 # HELPERS
@@ -148,12 +146,16 @@ def build_dos_http_rule(feat_idx, target_idx):
 
 def build_portscan_rule(feat_idx, target_idx):
     def rule(logits, x):
-        many_ports = col(x, feat_idx, "portscan_many_ports") > 0.5
-        few_pkts = col(x, feat_idx, "portscan_few_pkts_per_port") > 0.5
-        short_scan = col(x, feat_idx, "portscan_short_duration") > 0.5
-        high_fail = col(x, feat_idx, "portscan_high_fail_ratio") > 0.5
+        many_ports = col(x, feat_idx, "portscan_many_ports") == 1
+        few_pkts = col(x, feat_idx, "portscan_few_pkts_per_port") == 1
+        short_scan = col(x, feat_idx, "portscan_short_duration") == 1
+        high_fail = col(x, feat_idx, "portscan_high_fail_ratio") == 1
 
-        active = many_ports | few_pkts | short_scan | high_fail
+        active = (many_ports 
+            & (few_pkts 
+            | short_scan 
+            | high_fail)
+        )
 
         margin = class_margin(logits, target_idx)
         loss, sat, active_frac = active_margin_loss(margin, active)
