@@ -50,10 +50,7 @@ ENGINEERED_FEATURES = [
     "orig_pkt_rate",
     "orig_byte_rate",
     "time_elapsed",
-    "flood_rate"
-]
-
-PORTSCAN_FEATURES = [
+    "flood_rate",
     "uniq_dst_ports",
     "pkts_per_port",
     "scan_duration",
