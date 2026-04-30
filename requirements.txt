@@ -8,8 +8,8 @@
 
 # Core Python packages
 tqdm>=4.0.0
-pandas>=2.0.0
-numpy>=1.24.0
+pandas>=2.2,<2.3
+numpy>=1.24,<2
 # PyTorch (install wheel using one of the commented commands above)
 # Additional (preserved from previous requirements.txt)
 kagglehub~=1.0.0
@@ -19,4 +19,6 @@ matplotlib
 joblib
 seaborn
 pyyaml~=6.0.3
-property-driven-ml
+
+## Install the property-driven-ml package directly from GitHub, the latest version is required for GlobalBounds precondition
+# git+https://github.com/tflinkow/property-driven-ml.git

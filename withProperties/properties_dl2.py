@@ -109,7 +109,6 @@ def build_dos_http_rule(feat_idx, target_idx):
         valid_input = col(x, feat_idx, "valid_input") == 1
         valid_tcp_handshake = col(x, feat_idx, "valid_tcp_handshake") == 1
         valid_http = col(x, feat_idx, "valid_http_conn") == 1
-        valid_duration = col(x, feat_idx, "valid_duration") == 1
         valid_packet_size = col(x, feat_idx, "valid_packet_size") == 1
         valid_iat = col(x, feat_idx, "valid_iat") == 1
         mal_time_elapsed = col(x, feat_idx, "dos_http_mal_time_elapsed") == 1
@@ -119,7 +118,6 @@ def build_dos_http_rule(feat_idx, target_idx):
             valid_input
             & valid_tcp_handshake
             & valid_http
-            & valid_duration
             & valid_packet_size
             & valid_iat
             & (mal_time_elapsed | mal_flood_rate)
@@ -132,7 +130,6 @@ def build_dos_http_rule(feat_idx, target_idx):
             "valid_input_frac": valid_input.float().mean().item(),
             "valid_tcp_handshake_frac": valid_tcp_handshake.float().mean().item(),
             "valid_http_frac": valid_http.float().mean().item(),
-            "valid_duration_frac": valid_duration.float().mean().item(),
             "valid_packet_size_frac": valid_packet_size.float().mean().item(),
             "valid_iat_frac": valid_iat.float().mean().item(),
             "mal_time_elapsed_frac": mal_time_elapsed.float().mean().item(),

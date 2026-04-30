@@ -50,28 +50,12 @@ ENGINEERED_FEATURES = [
     "orig_pkt_rate",
     "orig_byte_rate",
     "time_elapsed",
-    "flood_rate",
     "uniq_dst_ports",
     "pkts_per_port",
     "scan_duration",
-    "fail_ratio"
-]
-
-
-PROPERTY_BOOLEAN_FEATURES = [
-    "is_tcp",
-    "valid_http_conn",
-    "valid_input",
+    "fail_ratio",
     "valid_tcp_handshake",
-    "valid_duration",
-    "valid_packet_size",
-    "valid_iat",
-    "dos_http_mal_time_elapsed",
-    "dos_http_mal_flood_rate",
-    "portscan_many_ports",
-    "portscan_few_pkts_per_port",
-    "portscan_short_duration",
-    "portscan_high_fail_ratio",
+    "valid_http_conn",
 ]
 
 def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):
