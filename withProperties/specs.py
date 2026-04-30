@@ -5,9 +5,9 @@ ATTACK_SPECS = {
         "valid_packet_size_min_total_bytes": 40.0,
     },
     "dos_http_flood": {
-        "valid_duration_min": 0.0,
-        "valid_duration_max": 120.0,
-        "valid_pkt_size_total_min": 300.0,
+        "mal_time_elapsed_min": 0.0,
+        "mal_time_elapsed_max": 120.0,
+        "valid_pkt_size_total_min": 300,
         "mal_byte_rate_min": 250.0,
         "mal_pkt_rate_min": 50.0,
     },
