@@ -9,7 +9,7 @@ import torch
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-from utils.preprocessing import PROPERTY_BOOLEAN_FEATURES
+from utils.utils import PROPERTY_BOOLEAN_FEATURES
 import os
 
 
