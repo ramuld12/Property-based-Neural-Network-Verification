@@ -7,7 +7,7 @@ from property_driven_ml.constraints.preconditions import GlobalBounds
 
 
 class TabularRuleConstraint(Constraint):
-    def __init__(self, device, precondition, postcondition, lower_bound, upper_bound):
+    def __init__(self, device, precondition, postcondition):
         super().__init__(device)
         self.precondition = precondition
         self.postcondition = postcondition
@@ -19,32 +19,40 @@ class DoSHttpFloodPostcondition(Postcondition):
         idx,
         class_idx,
         dos_http_flood_specs,
+        validity_specs,
         min_prob=0.80
     ):
         self.idx = idx
         self.class_idx = class_idx
         self.min_prob = min_prob
         self.dos_http_flood_specs = dos_http_flood_specs
+        self.validity_specs = validity_specs
 
     def get_postcondition(self, N, x, x_adv):
         valid_tcp_handshake = x[:, self.idx["valid_tcp_handshake"]]
         valid_http_conn = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
 
-        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
-        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
-        orig_pkt_rate = x_adv[:, self.idx["orig_pkt_rate"]]
-        orig_byte_rate = x_adv[:, self.idx["orig_byte_rate"]]
+        orig_bytes = x[:, self.idx["orig_bytes"]]
+        orig_pkts = x[:, self.idx["orig_pkts"]]
+        orig_pkt_rate = x[:, self.idx["orig_pkt_rate"]]
+        orig_byte_rate = x[:, self.idx["orig_byte_rate"]]
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
         return lambda logic: logic.IMPL(
             logic.AND(
                 # validInput(x)
-                logic.AND(
-                    logic.GEQ(orig_bytes, torch.zeros_like(orig_bytes)),
-                    logic.GEQ(orig_pkts, torch.zeros_like(orig_pkts)),
-                ),
+                # logic.AND(
+                #     logic.GEQ(
+                #         orig_bytes,
+                #         torch.full_like(orig_bytes,self.validity_specs["valid_packet_size_min_total_bytes"],),
+                #     ),
+                #     logic.GEQ(
+                #         orig_pkts,
+                #         torch.full_like(orig_pkts,self.validity_specs["valid_packet_size_min_pkts"],),
+                #     ),
+                # ),
 
                 # validTCPHandshake(x)
                 logic.EQ(valid_tcp_handshake, torch.ones_like(valid_tcp_handshake)),
@@ -76,15 +84,18 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http_conn = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
 
-        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
-        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
-        orig_pkt_rate = x_adv[:, self.idx["orig_pkt_rate"]]
-        orig_byte_rate = x_adv[:, self.idx["orig_byte_rate"]]
+        orig_bytes = x[:, self.idx["orig_bytes"]]
+        orig_pkts = x[:, self.idx["orig_pkts"]]
+        orig_pkt_rate = x[:, self.idx["orig_pkt_rate"]]
+        orig_byte_rate = x[:, self.idx["orig_byte_rate"]]
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
         parts = {
-            "valid_input": (orig_bytes >= 0) & (orig_pkts >= 0),
+            # "valid_input": (
+            #     (orig_bytes >= self.validity_specs["valid_packet_size_min_total_bytes"])
+            #     & (orig_pkts >= self.validity_specs["valid_packet_size_min_pkts"])
+            # ),
             "valid_tcp_handshake": valid_tcp_handshake == 1,
             "valid_http_conn": valid_http_conn == 1,
             "mal_time_elapsed_min": (time_elapsed >= self.dos_http_flood_specs["mal_time_elapsed_min"]),
@@ -98,8 +109,8 @@ class DoSHttpFloodPostcondition(Postcondition):
         parts["malicious_signal"] = parts["high_byte_rate"] | parts["high_pkt_rate"]
 
         parts["antecedent_true"] = (
-            parts["valid_input"]
-            & parts["valid_tcp_handshake"]
+            # parts["valid_input"]
+            parts["valid_tcp_handshake"]
             & parts["valid_http_conn"]
             & parts["mal_time_elapsed_min"]
             & parts["mal_time_elapsed_max"]

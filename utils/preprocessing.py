@@ -50,13 +50,16 @@ ENGINEERED_FEATURES = [
     "orig_pkt_rate",
     "orig_byte_rate",
     "time_elapsed",
+    "valid_tcp_handshake",
+    "valid_http_conn",
+
+    # portscan features
     "uniq_dst_ports",
     "pkts_per_port",
     "scan_duration",
     "fail_ratio",
-    "valid_tcp_handshake",
-    "valid_http_conn",
 ]
+
 
 def balance_dataset(X: pd.DataFrame, y: pd.Series, random_state: int = 42):
     """Balance dataset by downsampling to minority class size.
