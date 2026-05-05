@@ -1,3 +1,5 @@
+import nt
+
 import torch
 import torch.nn.functional as F
 
@@ -33,8 +35,8 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http_conn = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
 
-        orig_bytes = x[:, self.idx["orig_bytes"]]
-        orig_pkts = x[:, self.idx["orig_pkts"]]
+        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
+        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
         orig_pkt_rate = x[:, self.idx["orig_pkt_rate"]]
         orig_byte_rate = x[:, self.idx["orig_byte_rate"]]
 
@@ -43,16 +45,16 @@ class DoSHttpFloodPostcondition(Postcondition):
         return lambda logic: logic.IMPL(
             logic.AND(
                 # validInput(x)
-                # logic.AND(
-                #     logic.GEQ(
-                #         orig_bytes,
-                #         torch.full_like(orig_bytes,self.validity_specs["valid_packet_size_min_total_bytes"],),
-                #     ),
-                #     logic.GEQ(
-                #         orig_pkts,
-                #         torch.full_like(orig_pkts,self.validity_specs["valid_packet_size_min_pkts"],),
-                #     ),
-                # ),
+                logic.AND(
+                    logic.GEQ(
+                        orig_bytes,
+                        torch.full_like(orig_bytes,self.validity_specs["valid_packet_size_min_total_bytes"],),
+                    ),
+                    logic.GEQ(
+                        orig_pkts,
+                        torch.full_like(orig_pkts,self.validity_specs["valid_packet_size_min_pkts"],),
+                    ),
+                ),
 
                 # validTCPHandshake(x)
                 logic.EQ(valid_tcp_handshake, torch.ones_like(valid_tcp_handshake)),
@@ -84,18 +86,18 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http_conn = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
 
-        orig_bytes = x[:, self.idx["orig_bytes"]]
-        orig_pkts = x[:, self.idx["orig_pkts"]]
-        orig_pkt_rate = x[:, self.idx["orig_pkt_rate"]]
-        orig_byte_rate = x[:, self.idx["orig_byte_rate"]]
+        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
+        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
+        orig_pkt_rate = x_adv[:, self.idx["orig_pkt_rate"]]
+        orig_byte_rate = x_adv[:, self.idx["orig_byte_rate"]]
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
         parts = {
-            # "valid_input": (
-            #     (orig_bytes >= self.validity_specs["valid_packet_size_min_total_bytes"])
-            #     & (orig_pkts >= self.validity_specs["valid_packet_size_min_pkts"])
-            # ),
+            "valid_input": (
+                (orig_bytes >= self.validity_specs["valid_packet_size_min_total_bytes"])
+                & (orig_pkts >= self.validity_specs["valid_packet_size_min_pkts"])
+            ),
             "valid_tcp_handshake": valid_tcp_handshake == 1,
             "valid_http_conn": valid_http_conn == 1,
             "mal_time_elapsed_min": (time_elapsed >= self.dos_http_flood_specs["mal_time_elapsed_min"]),
@@ -136,10 +138,10 @@ class PortscanPostcondition(Postcondition):
         self.portscan_specs = portscan_specs
 
     def get_postcondition(self, N, x, x_adv):
-        uniq_dst_ports = x[:, self.idx["uniq_dst_ports"]]
-        fail_ratio = x[:, self.idx["fail_ratio"]]
-        pkts_per_port = x[:, self.idx["pkts_per_port"]]
-        short_scan_duration_max = x[:, self.idx["scan_duration"]]
+        uniq_dst_ports = x_adv[:, self.idx["uniq_dst_ports"]]
+        fail_ratio = x_adv[:, self.idx["fail_ratio"]]
+        pkts_per_port = x_adv[:, self.idx["pkts_per_port"]]
+        short_scan_duration_max = x_adv[:, self.idx["scan_duration"]]
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
         return lambda logic: logic.IMPL(
@@ -161,13 +163,14 @@ class PortscanPostcondition(Postcondition):
             ),
             logic.GEQ(p, torch.full_like(p, self.min_prob)),
         )
-    
+   
+
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
-        uniq_dst_ports = x[:, self.idx["uniq_dst_ports"]]
-        fail_ratio = x[:, self.idx["fail_ratio"]]
-        pkts_per_port = x[:, self.idx["pkts_per_port"]]
-        scan_duration = x[:, self.idx["scan_duration"]]
+        uniq_dst_ports = x_adv[:, self.idx["uniq_dst_ports"]]
+        fail_ratio = x_adv[:, self.idx["fail_ratio"]]
+        pkts_per_port = x_adv[:, self.idx["pkts_per_port"]]
+        scan_duration = x_adv[:, self.idx["scan_duration"]]
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
