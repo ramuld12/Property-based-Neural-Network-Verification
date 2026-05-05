@@ -42,7 +42,7 @@ class DoSHttpFloodPostcondition(Postcondition):
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
-        return lambda logic: logic.IMPL(
+        return lambda logic: logic.AND(
             logic.AND(
                 # validInput(x)
                 logic.AND(
@@ -57,10 +57,18 @@ class DoSHttpFloodPostcondition(Postcondition):
                 ),
 
                 # validTCPHandshake(x)
-                logic.EQ(valid_tcp_handshake, torch.ones_like(valid_tcp_handshake)),
+                # validTCPHandshake is binary, so we check it's equal to 1 by checking it's >= 1 and <= 1
+                # DL2 does NOT SUPPORT THE EQUALITY OPERATOR, so we have to do this workaround
+                logic.AND(
+                    logic.GEQ(valid_tcp_handshake, torch.ones_like(valid_tcp_handshake)),
+                    logic.LEQ(valid_tcp_handshake, torch.ones_like(valid_tcp_handshake)),
+                ),
 
                 # validHTTPConn(x)
-                logic.EQ(valid_http_conn, torch.ones_like(valid_http_conn)),
+                logic.AND(
+                    logic.GEQ(valid_http_conn, torch.ones_like(valid_http_conn)),
+                    logic.LEQ(valid_http_conn, torch.ones_like(valid_http_conn)),
+                ),
 
                 # validSizes(x)
                 logic.GEQ(orig_bytes, torch.full_like(orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
@@ -86,10 +94,10 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http_conn = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
 
-        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
-        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
-        orig_pkt_rate = x_adv[:, self.idx["orig_pkt_rate"]]
-        orig_byte_rate = x_adv[:, self.idx["orig_byte_rate"]]
+        orig_bytes = x[:, self.idx["orig_bytes"]]
+        orig_pkts = x[:, self.idx["orig_pkts"]]
+        orig_pkt_rate = x[:, self.idx["orig_pkt_rate"]]
+        orig_byte_rate = x[:, self.idx["orig_byte_rate"]]
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
@@ -103,16 +111,16 @@ class DoSHttpFloodPostcondition(Postcondition):
             "mal_time_elapsed_min": (time_elapsed >= self.dos_http_flood_specs["mal_time_elapsed_min"]),
             "mal_time_elapsed_max": (time_elapsed <= self.dos_http_flood_specs["mal_time_elapsed_max"]),
             "valid_pkt_size_total_min": orig_bytes >= self.dos_http_flood_specs["valid_pkt_size_total_min"],
-            "high_byte_rate": orig_byte_rate >= self.dos_http_flood_specs["mal_byte_rate_min"],
-            "high_pkt_rate": orig_pkt_rate >= self.dos_http_flood_specs["mal_pkt_rate_min"],
+            "mal_byte_rate_min": orig_byte_rate >= self.dos_http_flood_specs["mal_byte_rate_min"],
+            "mal_pkt_rate_min": orig_pkt_rate >= self.dos_http_flood_specs["mal_pkt_rate_min"],
             "prediction_ok": p >= self.min_prob,
         }
 
-        parts["malicious_signal"] = parts["high_byte_rate"] | parts["high_pkt_rate"]
+        parts["malicious_signal"] = parts["mal_byte_rate_min"] | parts["mal_pkt_rate_min"]
 
         parts["antecedent_true"] = (
-            # parts["valid_input"]
-            parts["valid_tcp_handshake"]
+            parts["valid_input"]
+            & parts["valid_tcp_handshake"]
             & parts["valid_http_conn"]
             & parts["mal_time_elapsed_min"]
             & parts["mal_time_elapsed_max"]
@@ -138,13 +146,13 @@ class PortscanPostcondition(Postcondition):
         self.portscan_specs = portscan_specs
 
     def get_postcondition(self, N, x, x_adv):
-        uniq_dst_ports = x_adv[:, self.idx["uniq_dst_ports"]]
-        fail_ratio = x_adv[:, self.idx["fail_ratio"]]
-        pkts_per_port = x_adv[:, self.idx["pkts_per_port"]]
-        short_scan_duration_max = x_adv[:, self.idx["scan_duration"]]
+        uniq_dst_ports = x[:, self.idx["uniq_dst_ports"]]
+        fail_ratio = x[:, self.idx["fail_ratio"]]
+        pkts_per_port = x[:, self.idx["pkts_per_port"]]
+        short_scan_duration_max = x[:, self.idx["scan_duration"]]
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
-        return lambda logic: logic.IMPL(
+        return lambda logic: logic.AND(
             logic.AND(
                 logic.GEQ(
                     uniq_dst_ports, torch.full_like(uniq_dst_ports, self.portscan_specs["min_uniq_dst_ports"]),
@@ -167,29 +175,29 @@ class PortscanPostcondition(Postcondition):
 
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
-        uniq_dst_ports = x_adv[:, self.idx["uniq_dst_ports"]]
-        fail_ratio = x_adv[:, self.idx["fail_ratio"]]
-        pkts_per_port = x_adv[:, self.idx["pkts_per_port"]]
-        scan_duration = x_adv[:, self.idx["scan_duration"]]
+        uniq_dst_ports = x[:, self.idx["uniq_dst_ports"]]
+        fail_ratio = x[:, self.idx["fail_ratio"]]
+        pkts_per_port = x[:, self.idx["pkts_per_port"]]
+        scan_duration = x[:, self.idx["scan_duration"]]
 
         p = F.softmax(N(x_adv), dim=1)[:, self.class_idx]
 
         parts = {
-            "many_dst_ports": uniq_dst_ports >= self.portscan_specs["min_uniq_dst_ports"],
-            "high_fail_ratio": fail_ratio >= self.portscan_specs["min_fail_ratio"],
-            "low_pkts_per_port": pkts_per_port <= self.portscan_specs["max_pkts_per_port"],
-            "short_scan_duration": scan_duration <= self.portscan_specs["max_scan_duration"],
+            "min_uniq_dst_ports": uniq_dst_ports >= self.portscan_specs["min_uniq_dst_ports"],
+            "min_fail_ratio": fail_ratio >= self.portscan_specs["min_fail_ratio"],
+            "max_pkts_per_port": pkts_per_port <= self.portscan_specs["max_pkts_per_port"],
+            "max_scan_duration": scan_duration <= self.portscan_specs["max_scan_duration"],
             "prediction_ok": p >= self.min_prob,
         }
 
         parts["scan_signal"] = (
-            parts["high_fail_ratio"]
-            | parts["low_pkts_per_port"]
-            | parts["short_scan_duration"]
+            parts["min_fail_ratio"]
+            | parts["max_pkts_per_port"]
+            | parts["max_scan_duration"]
         )
 
         parts["antecedent_true"] = (
-            parts["many_dst_ports"]
+            parts["min_uniq_dst_ports"]
             & parts["scan_signal"]
         )
 

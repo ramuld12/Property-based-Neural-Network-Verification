@@ -12,8 +12,8 @@ ATTACK_SPECS = {
     },
     "portscan": {
         "min_uniq_dst_ports": 20.0,
-        "max_pkts_per_port": 5.0,
-        "max_scan_duration": 1.0,
+        "max_pkts_per_port": 10.0,
+        "max_scan_duration": 5.0,
         "min_fail_ratio": 0.75,
     },
     "ddos_udp_flood": {
