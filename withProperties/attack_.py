@@ -1,4 +1,3 @@
-import nt
 
 import torch
 import torch.nn.functional as F
@@ -35,8 +34,8 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http_conn = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
 
-        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
-        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
+        orig_bytes = x[:, self.idx["orig_bytes"]]
+        orig_pkts = x[:, self.idx["orig_pkts"]]
         orig_pkt_rate = x[:, self.idx["orig_pkt_rate"]]
         orig_byte_rate = x[:, self.idx["orig_byte_rate"]]
 
@@ -116,8 +115,6 @@ class DoSHttpFloodPostcondition(Postcondition):
             "prediction_ok": p >= self.min_prob,
         }
 
-        parts["malicious_signal"] = parts["mal_byte_rate_min"] | parts["mal_pkt_rate_min"]
-
         parts["antecedent_true"] = (
             parts["valid_input"]
             & parts["valid_tcp_handshake"]
@@ -125,7 +122,7 @@ class DoSHttpFloodPostcondition(Postcondition):
             & parts["mal_time_elapsed_min"]
             & parts["mal_time_elapsed_max"]
             & parts["valid_pkt_size_total_min"]
-            & parts["malicious_signal"]
+            & (parts["mal_byte_rate_min"] | parts["mal_pkt_rate_min"])
         )
 
         return parts
