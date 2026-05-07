@@ -1,0 +1,553 @@
+run_id,params,best_epoch,best_val_score,own_test_acc,own_test_macro_f1,own_test_dos_sat,own_test_scan_sat,own_test_dos_loss,own_test_scan_loss,cross_acc,cross_macro_f1,cross_dos_sat,cross_scan_sat,cross_dos_loss,cross_scan_loss,final_score,runtime_seconds,status,cross_cmfig,model
+bs1024_lr0.001_ldos0.25_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",2,3.4839215950728444,0.8527546383945476,0.8636350937035823,0.9475085583872195,0.8451286764705882,0.021764247986063297,0.01671085347804953,0.9716240653160696,0.9654870475571804,0.9739295286657514,0.9979867438850614,0.006169028696986112,0.0003425373534456326,1.117508689793037,49.7703378200531,ok,,
+bs1024_lr0.001_ldos0.5_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",17,3.6504696607939504,0.8946421809920485,0.9001187512097707,0.9619627234689996,0.94921875,0.02250173806962789,0.015868749140816575,0.952989800305494,0.9437783514050198,0.9823298686016866,0.9997058554377525,0.00973900766741133,0.00015963682460661484,1.1167383022345219,109.89657258987427,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.25_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.5118615178598866,0.87268080272624,0.8737467008632153,0.9585393685812096,0.8540900735294118,0.02809783774394416,0.029358880101319623,0.9566918076209283,0.9490328076254061,0.9977446558148657,0.9981893768057207,0.00047480125493330603,0.0007075697283738391,1.1108094468168728,58.39310646057129,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",8,3.517949310422486,0.8528019689511549,0.864638077120245,0.899581589958159,0.9448529411764706,0.03005007180300626,0.007471504155546427,0.9625391859688845,0.9550181569722275,0.8611623194090344,0.9993790281463664,0.01603285549450226,0.00013836112439343326,1.1097588434910592,75.83464503288269,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,3.445155163043408,0.8390761075350246,0.8471204650568828,0.9429440852034995,0.8600643382352942,0.026122847860328324,0.01390145390349276,0.9677881073420085,0.9610965811686497,0.9655030398117278,0.9950060789876198,0.005305252461649432,0.0005992126019443322,1.108124037305309,49.06586527824402,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,3.363525546609369,0.8107724346838319,0.823494012462029,0.9178394826930392,0.8550091911764706,0.026068263155464528,0.010508863392340787,0.9783140365166779,0.9736195369446546,0.9740471987971497,0.9950060789876198,0.0024857640128092976,0.0005447212405776593,1.1071572688565028,48.8023099899292,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,3.417101273900764,0.8236936766376373,0.8380217801353639,0.9421833396728794,0.8340992647058824,0.02854168133936984,0.014838007059605682,0.9679620271487738,0.9611267599311349,0.8865398444139374,0.997620697318709,0.01144798585633994,0.000491739467573199,1.1032950794647998,49.261749029159546,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.3316017549228634,0.8356683074592958,0.8333240498234469,0.9478889311525295,0.7624080882352942,0.037590034790662995,0.09154369660160121,0.9631992170367953,0.9561657361296679,0.9797476629404458,0.9982351326265149,0.009413435777947975,0.0009614095258767002,1.100841104632421,57.390697956085205,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",4,3.38786222669125,0.8531332828474063,0.8516340118533493,0.9509319132750095,0.7778033088235294,0.035195540366131074,0.05668444668545442,0.9539177326906583,0.9458768837253234,0.9878211414002745,0.9979998169767168,0.005112025812886826,0.0009469262045959195,1.1000672206100104,60.14988660812378,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,2.3920840941760506,0.8053767512305945,0.8051722066245617,0.0,0.0,0.44643026433910604,0.4444142141762902,0.972113417318956,0.9660145058770281,0.0,0.0,0.4478507164187499,0.4421936028573425,1.096751069705232,48.90229320526123,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",5,3.52685917315718,0.8740060583112458,0.8792590112082753,0.9471281856219095,0.8685661764705882,0.03787813562093555,0.038155200507710964,0.9356561529802941,0.9273063597993779,0.9868144080538668,0.9997058554377525,0.00836907291580682,0.00010898740894428887,1.0950030396976813,61.99507975578308,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",19,3.522039822697384,0.8518080272624006,0.8631582102184598,0.9581589958158996,0.8968290441176471,0.016129220255249214,0.011444238699315226,0.9354368627891552,0.9243662134871234,0.9999803883114337,0.9980651824349941,3.7022370906205647e-06,0.00046392633926386416,1.0858074130764805,109.01373195648193,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",2,3.3952555051088567,0.8119556985990155,0.8309723115537312,0.9433244579688095,0.8136488970588235,0.022139359989652347,0.012254738413235721,0.9422424204451915,0.9323172598764812,0.9753481074720534,0.9950060789876198,0.00467700513311482,0.0006112106700691778,1.0774169581023474,48.78187608718872,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",17,3.5151467305427566,0.8497254827716774,0.8622512325143133,0.9570178775199696,0.8885569852941176,0.018944736758580723,0.014071771984591204,0.924452908781762,0.9121649075416141,0.9876054128260443,0.9983266442681029,0.003546866543302195,0.00031073832454863175,1.0758136694625338,112.6852126121521,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",2,3.4484107737334364,0.834059068534646,0.8409810341527305,0.9516926588056295,0.9108455882352942,0.015236233510913029,0.009744094520368996,0.9169376286844533,0.9080157077825551,0.9663659541086488,0.9980651824349941,0.0035547336061429284,0.0005807818698884303,1.064097163034089,48.65690207481384,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,3.3992421229224976,0.7937807648617948,0.8116865687186626,0.9262076835298593,0.9499080882352942,0.021701373179723392,0.002065452979877591,0.9302830031737664,0.9197636356640174,0.9605216709158658,0.9982874249931366,0.003489922856851256,0.0003355026240052277,1.06006018550023,48.81887936592102,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",3,3.5264646345362682,0.8716395304808785,0.8718859876028785,0.9615823507036896,0.8860294117647058,0.0143674175042805,0.016662502168294263,0.8918748123070408,0.8856892251756529,0.9983526181604236,0.9983266442681029,0.000157754948585417,0.0005709674924921005,1.0591121598966902,53.91823720932007,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.5218710771878783,0.8490155244225672,0.8591235583996522,0.9593001141118296,0.9198069852941176,0.021158864376616595,0.011577588451259276,0.896875276813357,0.8893214541671751,0.9930901483951101,0.9980651824349941,0.0006725561925069237,0.00024602588750661126,1.0553511266920386,108.32774209976196,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.25_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.3639313245488442,0.8408273381294964,0.8415032592222155,0.9570178775199696,0.7642463235294118,0.0323954021672234,0.0818301483112223,0.9040621617475808,0.8926058601172654,0.9958553964829705,0.9983266442681029,0.0009305904482348788,0.0010862500946251185,1.0539876980532492,57.765050172805786,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",20,3.5217838304973914,0.850908746686861,0.8613617023602228,0.9581589958158996,0.9113051470588235,0.02387417763891035,0.009258017710903111,0.8937652449892731,0.8864410129861148,0.992880957050402,0.9979932804308891,0.0010673761632759337,0.0005809853725336851,1.053804169799256,109.34951138496399,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.5456346112459576,0.8484475577432791,0.8608831289005473,0.9585393685812096,0.9485294117647058,0.021002757771471328,0.007410578224260141,0.8981899377129438,0.8841127119789437,0.9896646401255148,0.9980651824349941,0.002210198198727333,0.00019170435375439384,1.0533794746321203,112.14602899551392,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.25_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.4746931932370666,0.8566357440363499,0.8593045217638876,0.9326740205401294,0.8922334558823529,0.044512614590806986,0.024607120355700746,0.8855672486318669,0.8805744469376071,0.9606785644243969,0.9983266442681029,0.01759314109486225,0.0005874169874438763,1.049145451218411,59.021111249923706,ok,,
+bs1024_lr0.0001_ldos0.75_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.5117537531689913,0.847074971601666,0.8562600719840233,0.9585393685812096,0.9172794117647058,0.02464483663037323,0.008347874192301841,0.8789496539968068,0.8732183536568563,0.9929136431980127,0.9980651824349941,0.0015799936039849747,0.0005159333803921363,1.0409610817446082,108.13380122184753,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.25_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",4,3.5267409347949124,0.8280480878455131,0.8463554976364707,0.9524534043362495,0.9790900735294118,0.03441818495493236,0.002247349194744054,0.8857930203064878,0.8779417120583926,0.9870628227757077,1.0,0.007031803663520242,0.0,1.0395894792175393,60.0318648815155,ok,,
+bs1024_lr0.001_ldos0.25_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",6,3.4522201935235333,0.7909882620219614,0.8126854479633544,0.9482693039178395,0.9981617647058824,0.03667951963300622,5.145346307579209e-05,0.8957766653631684,0.8898844428834306,0.9924364254428973,0.9998300498084792,0.0036453983881445952,0.00013096474710395432,1.034409963047729,68.4859664440155,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",6,3.4898033377608533,0.8693203332071185,0.8714735487052288,0.9634842145302396,0.8350183823529411,0.016770779984493406,0.07940076269647654,0.8584357587764687,0.8528018030275026,1.0,0.9980651824349941,0.0,0.0006611970583761974,1.0320904055291615,66.99189114570618,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",20,3.454017748248731,0.8373248769405528,0.8453721292959093,0.9608216051730696,0.8940716911764706,0.018483866979614235,0.010594104964505224,0.8708240342049488,0.8663362624965987,0.9977381185853436,0.9979998169767168,0.0003018843026506267,0.0007010923118685314,1.0309547427570764,106.55412769317627,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",6,3.4995814543466355,0.8458917076864824,0.8547885881496864,0.9524534043362495,0.9136029411764706,0.03129199200503588,0.011685649919159272,0.8651646188779688,0.8616209316314724,0.9977577302739099,0.9980651824349941,0.0003734011077145202,0.0004222063524506462,1.0304959106463605,68.6278612613678,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",20,3.4931812846712944,0.8422472548277168,0.8545356086959948,0.9516926588056295,0.8965992647058824,0.02498574459131066,0.01322308777119307,0.8541471772059189,0.8474691010785561,0.9987448519317513,0.9980194266142,7.303011661309342e-05,0.00034008838374935163,1.0193352764057961,106.62218427658081,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",17,3.4863184307749036,0.848163574403635,0.8588477686052625,0.9593001141118296,0.8573069852941176,0.01771821899530143,0.016176105915185285,0.8506677008233644,0.8452991578901797,0.99969275021246,0.9979932804308891,1.923158241735063e-05,0.0005153829255405217,1.0192521577938787,112.06488633155823,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.4785078339293656,0.8209011737978038,0.8386461143958864,0.9551160136934196,0.9195772058823529,0.022004183003457158,0.006700252182781696,0.8607572101102501,0.8508800925672927,0.9911682029156044,0.9980586458891664,0.0015481765565431421,0.0005400020853143739,1.0155766669554596,107.31209874153137,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",7,3.5712149375748643,0.8513347216963272,0.8612714760202923,0.9596804868771396,0.9933363970588235,0.024068713754970977,0.0009296218905707492,0.8358488690891571,0.8359865706992139,0.9992024579983003,0.9997385381668911,5.1770980329913175e-05,0.00020574434186964276,1.0112691856196778,73.38680815696716,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",18,3.514757550186326,0.8429098826202196,0.8527296150747113,0.9589197413465196,0.9368106617647058,0.019019530181333382,0.009510962155592792,0.8358434678529222,0.8374798581720461,0.9999934627704778,0.9983527904514139,1.9826991983416066e-06,0.00029964878115488737,1.008620868980886,107.64892029762268,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.4821684089022917,0.8440458159787959,0.8564942218250189,0.9581589958158996,0.8878676470588235,0.014776320387628787,0.01886645529200049,0.8427408465249526,0.829696482201169,0.9999215532457345,0.9979867438850614,5.934072754979562e-06,0.0004681719953397027,1.0077785026188333,111.73288941383362,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",20,3.4545138318819264,0.8342483907610754,0.8449720465972274,0.9490300494484595,0.8671875,0.024556264173580967,0.014061193118857987,0.837788993144751,0.8382447470680958,0.997862325946264,0.9950060789876198,9.355484141768556e-05,0.0005166042718000518,1.0063031589491338,106.38324308395386,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.504617989923124,0.8432885270730783,0.8543982592715414,0.9600608596424496,0.9028033088235294,0.019004543070649867,0.009886025889393161,0.8322743309488676,0.834127233057867,0.9997646597372034,0.9980063535225445,1.356831179527377e-05,0.0005253182656594211,1.0062832730825177,107.86989998817444,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.4851467926581066,0.8076486179477471,0.8252642984207652,0.9554963864587296,0.9963235294117647,0.03233445232564753,0.00010996292728711577,0.8576990301540216,0.844618252526601,0.9927436752304374,1.0,0.002638474029053611,0.0,1.0062014185832096,57.32772374153137,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",18,3.3802298302512317,0.8252555850056796,0.8358310326446965,0.8744769874476988,0.8880974264705882,0.022859940469015592,0.015241007731460473,0.8446896125585224,0.8337122050011242,0.9927306007713931,0.9979867438850614,0.0004009261484776415,0.0007226570378818771,1.002480309798194,107.33702301979065,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",18,3.5203631335636487,0.8476429382809542,0.8567751676978839,0.9604412324077596,0.9368106617647058,0.01699203544127347,0.007695772507063606,0.8234713961331469,0.8279276839136003,0.9982153363404589,0.9982874249931366,0.00015228996091694148,0.00047068298427938905,1.0018888819925118,108.73967266082764,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",8,3.4271992849335535,0.7903256342294586,0.8135330985647083,0.9444655762647395,0.9666819852941176,0.03436070791711006,0.003324284218251705,0.8494535029177478,0.844306951173769,0.9852912335752109,0.996463728707202,0.0037872440870925553,0.00018816833798866302,0.9977612730210422,77.74314951896667,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",20,3.4971682087933464,0.8443771298750473,0.8554059170488242,0.9600608596424496,0.8982077205882353,0.01845230018743411,0.014888512792394441,0.8236701616265931,0.8191723952728694,0.9999934627704778,0.9980651824349941,1.5194407317999524e-06,0.0004157874851407086,0.996643855509187,111.68159556388855,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.474673346708851,0.8326864823930329,0.8425393103666651,0.9600608596424496,0.9384191176470589,0.030786607758814775,0.00842029636944918,0.8305556575789067,0.8246289593489197,0.9992155324573446,0.9980651824349941,0.00016622397684073724,0.00025694716717438755,0.9965263355000714,60.011215925216675,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.75_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.75, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",3,3.3943073187633135,0.8027262400605831,0.8050569508129534,0.99961962723469,0.9712775735294118,2.1398656945937758e-05,0.004552523591829573,0.8435186245427854,0.8437145806878155,1.0,0.9983593269972416,0.0,0.0002568705230022093,0.9964695158814507,54.28726601600647,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",8,3.4851757802595866,0.8044774706550549,0.8221295566384237,0.9593001141118296,0.9919577205882353,0.023135707468168506,0.000912103391088107,0.8372413077905271,0.8329436312405009,0.9978492514872197,0.9997385381668911,0.000290229262351491,0.00013894706498131433,0.9929656134161042,75.57869052886963,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",4,3.5313287949127488,0.8650605831124574,0.8711619307832991,0.9593001141118296,0.9048713235294118,0.03139112752034393,0.019856499234104857,0.8154775665054218,0.8020964189914525,0.9969536510426881,0.9997058554377525,0.0009676326939800467,0.00010550126696163425,0.992935982226504,56.92389750480652,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.25_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",3,3.3838280766328572,0.7741385838697463,0.7818635419175699,0.99885888170407,0.9933363970588235,0.0004639614666764298,0.00028373331160229794,0.8476926999051543,0.8438605601988369,1.0,0.9997385381668911,0.0,0.0001529187547278947,0.987438515228428,54.42759680747986,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",20,3.4083934478670725,0.8127129875047331,0.8203285479276342,0.9600608596424496,0.9227941176470589,0.015843477492642612,0.006463217987295459,0.8140494796449012,0.8185904479917805,0.9997711969667255,0.9979998169767168,1.1810631333375014e-05,0.000734373423547418,0.9801183749758341,108.2666265964508,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",3,3.358929594713218,0.7712514199166982,0.7772348264810877,1.0,0.9974724264705882,0.0,5.890552283209913e-05,0.7982033327788064,0.8057549069131656,1.0,0.9997385381668911,0.0,0.00020609908585623643,0.9520357025697819,52.39469051361084,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,2.3411714172299742,0.7796762589928058,0.7807749292166326,0.0,0.0,0.39483204809328865,0.44124961425276366,0.7803889754286961,0.7943085945519991,0.0,0.0,0.40057011252876634,0.4381696659084295,0.9433612275464961,48.63401508331299,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.25_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.25, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",3,3.3086762173837636,0.7641991669822037,0.7687435142403157,1.0,0.9558823529411765,0.0,0.0038815231528133154,0.7834601183518883,0.7953949649944634,1.0,0.9980651824349941,0.0,0.00042873446013764663,0.939324054247302,54.03278970718384,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos1.0_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 1.0, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,3.4072961009154055,0.7624006058311246,0.792214880338482,0.9585393685812096,0.9708180147058824,0.03179190405061735,0.0017556841211283907,0.7703135093560214,0.7665089386442681,0.987847290318363,0.9983266442681029,0.005056166839792876,0.00018371141514953866,0.9252716193628617,57.86110973358154,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",3,2.267496096518788,0.7308784551306323,0.7370985362759673,0.0,0.0,0.3780887432540946,0.4340640341534334,0.7706591884750582,0.782015025271388,0.0,0.0,0.38205228093450205,0.42984676013241524,0.9158006674595314,54.43408513069153,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan0.75_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,2.2720626389629417,0.7611226808027263,0.7606476607934182,0.0,0.0,0.4148254024524478,0.44385964730206656,0.7450141188315181,0.7695896830911408,0.0,0.0,0.40057812546284094,0.4400985951363988,0.9126531455142548,50.08845853805542,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,2.3479134283251355,0.7738072699734949,0.7760257739569628,0.0,0.0,0.4078666285082794,0.4492624489700093,0.7180651907608614,0.7196126339347751,0.0,0.0,0.4042757207742429,0.4516919087062667,0.8851924829817376,49.73113441467285,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",1,2.3847034253130497,0.7961946232487694,0.8000692206758925,0.0,0.0,0.44592339423909844,0.4523146099904004,0.8193696973363264,0.6166211432542645,0.0,0.0,0.46676036482847943,0.453302318816413,0.8733742496129625,46.115153551101685,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",2,2.3295570417962734,0.7713934115865203,0.7736689004238925,0.0,0.0,0.4162969026968206,0.45483776926994324,0.6653804522779174,0.7131579992926436,0.0,0.0,0.42044451620607287,0.4558302156082992,0.8652055977317796,48.93738865852356,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",2,2.285333008980399,0.738498674744415,0.7449318206754886,0.0,0.0,0.4168298568232244,0.4294777933289023,0.6928576212523523,0.6938927269924059,0.0,0.0,0.43001607418714916,0.42641661769417166,0.8514897489558894,48.190608739852905,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.5_lscan0.5_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.5, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.01}",2,2.1029414093219088,0.6869083680424082,0.6896041264203778,0.0,0.0,0.4059185051292283,0.4502738679156584,0.656444647050817,0.701976556954324,0.0,0.0,0.40003485890660495,0.4468153590162847,0.8232241714849644,49.6339385509491,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan1.0_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.001}",3,2.099890850739126,0.6810393790230973,0.6863277306768941,0.0,0.0,0.3817764520191702,0.4380786103360793,0.6472819899018487,0.6997309533709265,0.0,0.0,0.3741152862929874,0.43609116182866736,0.8175234955960161,53.52013301849365,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.001_ldos0.5_lscan0.75_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.001, 'lambda_dos': 0.5, 'lambda_scan': 0.75, 'pgd_steps': 5, 'pgd_step_size': 0.001}",7,3.471936919994469,0.8143222264293828,0.8340817795333959,0.9456066945606695,0.9450827205882353,0.03626087143558112,0.007632034789661274,0.5448842731124299,0.6316906517689169,0.9647381839576388,0.9983266442681029,0.013193683139310129,0.0002619871624984782,0.8089914090107433,72.42897510528564,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.75_lscan0.25_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.75, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.01}",3,2.2143522044122683,0.7063612268080273,0.7124739558391151,0.0,0.0,0.35630944891545474,0.42041706512956056,0.5964099062993538,0.6061140654558754,0.0,0.0,0.37969500939503303,0.42341746912155537,0.7657470411471723,51.91003656387329,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan0.25_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 0.25, 'pgd_steps': 5, 'pgd_step_size': 0.001}",2,2.1377655497647945,0.7019594850435441,0.7051297739760213,0.0,0.0,0.39424561855683266,0.4558229183449465,0.5262294834041615,0.6104077475289128,0.0,0.0,0.3983270438035236,0.4553091492961525,0.7444905705896179,47.99139451980591,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos1.0_lscan0.5_pgd5_step0.001,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 1.0, 'lambda_scan': 0.5, 'pgd_steps': 5, 'pgd_step_size': 0.001}",1,1.8462310635692045,0.4853748580083302,0.5004284437453971,0.0,0.0,0.4484204894102495,0.4493370985283571,0.6410684077371629,0.6700030364932102,0.0,0.0,0.44068446089849367,0.449437836691954,0.7244827009184994,44.126944065093994,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
+bs1024_lr0.0001_ldos0.25_lscan1.0_pgd5_step0.01,"{'batch_size': 1024, 'learning_rate': 0.0001, 'lambda_dos': 0.25, 'lambda_scan': 1.0, 'pgd_steps': 5, 'pgd_step_size': 0.01}",4,1.891654793892054,0.5109333585762968,0.49057059734157354,0.0,0.0,0.35246739436483693,0.3780826803515939,0.5351642083840149,0.549503613238458,0.0,0.0,0.3620174142872811,0.37275660288434725,0.6356018603180076,57.68839430809021,ok,Figure(1100x1500),"MLP(
+  (head): Sequential(
+    (0): Linear(in_features=17, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=3, bias=True)
+  )
+)"
