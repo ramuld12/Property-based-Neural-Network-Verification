@@ -8,10 +8,9 @@
 
 # Core Python packages
 tqdm>=4.0.0
-pandas>=2.2,<2.3
-numpy>=1.24,<2
+pandas
+numpy
 # PyTorch (install wheel using one of the commented commands above)
-# Additional (preserved from previous requirements.txt)
 kagglehub~=1.0.0
 ipywidgets
 scikit-learn
