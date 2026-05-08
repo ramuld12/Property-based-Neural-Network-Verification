@@ -1,0 +1,78 @@
+experiment:
+  name: properties_multiclass_cicids2017_to_ciciot2023
+  method: properties
+  task: multiclass
+  seed: 42
+
+data:
+  train_path: data/cicids2017_preprocessed.tsv
+  cross_eval_path: data/ciciot2023_preprocessed.tsv
+  labels: [BENIGN, DOS_HTTP_FLOOD, PORTSCAN]
+  test_size: 0.3
+  val_size: 0.2
+
+features:
+  set: engineered
+  numeric:
+    - duration
+    - orig_bytes
+    - resp_bytes
+    - missed_bytes
+    - orig_pkts
+    - orig_ip_bytes
+    - resp_pkts
+    - resp_ip_bytes
+  engineered:
+    - time_elapsed
+    - valid_tcp_handshake
+    - valid_http_conn
+    - uniq_dst_ports
+    - scan_duration
+    - fail_ratio
+
+model:
+  type: mlp
+  batch_size: 2048
+  learning_rate: 0.001
+  epochs: 20
+  patience: 5
+  min_delta: 0.0001
+
+properties:
+  logic: dl2
+  lambda_dos: 1
+  lambda_scan: 1
+  pgd_steps: 5
+  pgd_restarts: 1
+  pgd_step_size: 0.01
+  min_prob: 0.8
+  frozen_features:
+    - valid_tcp_handshake
+    - valid_http_conn
+    - time_elapsed
+
+attack_specs:
+  validity:
+    valid_packet_size_min_pkts: 1.0
+    valid_packet_size_min_total_bytes: 40.0
+  dos_http_flood:
+    mal_time_elapsed_min: 0.0
+    mal_time_elapsed_max: 120.0
+    valid_pkt_size_total_min: 250
+    mal_byte_rate_min: 200.0
+    mal_pkt_rate_min: 5.0
+  portscan:
+    min_uniq_dst_ports: 20.0
+    max_pkts_per_port: 10.0
+    max_scan_duration: 5.0
+    min_fail_ratio: 0.75
+
+preconditions:
+  default:
+    name: GlobalBounds
+    params:
+      lower_bound: 0.0
+      upper_bound: 1.0
+
+output:
+  root: outputs/runs

@@ -1,0 +1,39 @@
+experiment:
+  name: baseline_multiclass_ciciot2023_to_cicids2017
+  method: baseline
+  task: multiclass
+  seed: 42
+
+data:
+  train_path: data/ciciot2023_preprocessed.tsv
+  cross_eval_path: data/cicids2017_preprocessed.tsv
+  labels: [BENIGN, DOS_HTTP_FLOOD, PORTSCAN]
+  test_size: 0.3
+  val_size: 0.2
+
+features:
+  set: base
+  categorical: [proto, service, conn_state, history]
+  numeric:
+    - duration
+    - orig_bytes
+    - resp_bytes
+    - missed_bytes
+    - orig_pkts
+    - orig_ip_bytes
+    - resp_pkts
+    - resp_ip_bytes
+  engineered: []
+
+model:
+  type: random_forest
+  n_estimators: 100
+  n_jobs: 1
+  batch_size: 1024
+  learning_rate: 0.001
+  epochs: 20
+  patience: 5
+  min_delta: 0.0001
+
+output:
+  root: outputs/runs
