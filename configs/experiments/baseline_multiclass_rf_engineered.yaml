@@ -1,14 +1,13 @@
 experiment:
-  name: baseline_binary_rf_engineered_ciciot2023_to_cicids2017
+  name: baseline_multiclass_rf_engineered_ciciot2023_to_cicids2017
   method: baseline
-  task: binary
+  task: multiclass
   seed: 42
 
 data:
   train_path: data/ciciot2023_preprocessed.tsv
   cross_eval_path: data/cicids2017_preprocessed.tsv
-  labels: [BENIGN, ATTACK]
-  attack_source_labels: [DOS_HTTP_FLOOD, PORTSCAN]
+  labels: [BENIGN, DOS_HTTP_FLOOD, PORTSCAN]
   test_size: 0.3
   val_size: 0.2
 
@@ -36,7 +35,7 @@ model:
   type: random_forest
   n_estimators: 100
   n_jobs: 1
-  batch_size: 1024
+  batch_size: 2048
   learning_rate: 0.001
   epochs: 20
   patience: 5

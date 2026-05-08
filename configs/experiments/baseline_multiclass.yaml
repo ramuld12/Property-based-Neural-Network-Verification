@@ -1,5 +1,5 @@
 experiment:
-  name: baseline_multiclass_ciciot2023_to_cicids2017
+  name: baseline_multiclass_rf_engineered_ciciot2023_to_cicids2017
   method: baseline
   task: multiclass
   seed: 42
@@ -12,7 +12,7 @@ data:
   val_size: 0.2
 
 features:
-  set: base
+  set: engineered
   categorical: [proto, service, conn_state, history]
   numeric:
     - duration
@@ -23,7 +23,13 @@ features:
     - orig_ip_bytes
     - resp_pkts
     - resp_ip_bytes
-  engineered: []
+  engineered:
+    - time_elapsed
+    - valid_tcp_handshake
+    - valid_http_conn
+    - uniq_dst_ports
+    - scan_duration
+    - fail_ratio
 
 model:
   type: random_forest

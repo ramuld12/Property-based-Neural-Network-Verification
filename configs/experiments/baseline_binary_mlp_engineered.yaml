@@ -1,5 +1,5 @@
 experiment:
-  name: baseline_binary_rf_engineered_ciciot2023_to_cicids2017
+  name: baseline_binary_mlp_engineered_ciciot2023_to_cicids2017
   method: baseline
   task: binary
   seed: 42
@@ -33,10 +33,8 @@ features:
     - fail_ratio
 
 model:
-  type: random_forest
-  n_estimators: 100
-  n_jobs: 1
-  batch_size: 1024
+  type: mlp
+  batch_size: 2048
   learning_rate: 0.001
   epochs: 20
   patience: 5
