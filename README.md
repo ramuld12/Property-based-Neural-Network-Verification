@@ -49,7 +49,7 @@ python -m thesis.cli run properties \
 
 Property logic and attack thresholds are defined in the property experiment configs. Edit the `properties.logic` field to switch logic, and edit `attack_specs` to change the rule thresholds used by the property constraints.
 
-The property model does not use `orig_byte_rate` or `orig_pkt_rate` as input features. The DoS rule still supports `mal_byte_rate_min` and `mal_pkt_rate_min`, but those rates are calculated during property evaluation from adversarial `duration`, `orig_bytes`, and `orig_pkts`. This lets you tune the rate thresholds without letting PGD perturb rate columns directly.
+The property model does not use `orig_byte_rate`, `orig_pkt_rate`, or `pkts_per_port` as input features. The DoS rule still supports `mal_byte_rate_min` and `mal_pkt_rate_min`, and the Portscan rule still supports `max_pkts_per_port`; these values are calculated during property evaluation from adversarial packet/byte fields and window context instead of being perturbed directly by PGD.
 
 Immutable context fields can be frozen during PGD:
 

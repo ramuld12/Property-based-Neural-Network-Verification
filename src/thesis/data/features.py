@@ -21,7 +21,6 @@ ENGINEERED_FEATURES = [
     "valid_tcp_handshake",
     "valid_http_conn",
     "uniq_dst_ports",
-    "pkts_per_port",
     "scan_duration",
     "fail_ratio",
 ]

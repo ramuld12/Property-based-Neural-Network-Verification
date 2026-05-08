@@ -23,6 +23,8 @@ class PropertyData:
     test_loader: DataLoader
     cross_eval_loader: DataLoader | None
     features: list[str]
+    tensor_features: list[str]
+    model_feature_count: int
     labels: list[str]
     scaler: MinMaxScaler
     scaled_attack_specs: dict
@@ -55,15 +57,23 @@ def make_loader(df: pd.DataFrame, feature_cols: list[str], batch_size: int, shuf
     return DataLoader(TensorDataset(x, y), batch_size=batch_size, shuffle=shuffle)
 
 
+def add_property_aux_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df["total_orig_pkts"] = df.groupby(["id.orig_h", "window_id"])["orig_pkts"].transform("sum")
+    return df
+
+
 def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyData:
     batch_size = config["model"]["batch_size"]
-    scale_cols = [col for col in feature_cols if col not in BOOLEAN_FEATURES]
     train_df = data.train.copy()
     val_df = data.val.copy()
     test_df = data.test.copy()
     cross_eval_df = None if data.cross_eval is None else data.cross_eval.copy()
+    aux_cols = ["total_orig_pkts"]
+    tensor_cols = feature_cols + [col for col in aux_cols if col not in feature_cols]
+    scale_cols = [col for col in tensor_cols if col not in BOOLEAN_FEATURES]
 
     for df in [train_df, val_df, test_df] + ([] if cross_eval_df is None else [cross_eval_df]):
+        add_property_aux_columns(df)
         df[scale_cols] = df[scale_cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
     clip_lower = train_df[scale_cols].quantile(0.01)
@@ -87,11 +97,13 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
         val_df=val_df,
         test_df=test_df,
         cross_eval_df=cross_eval_df,
-        train_loader=make_loader(train_df, feature_cols, batch_size, shuffle=True),
-        val_loader=make_loader(val_df, feature_cols, batch_size),
-        test_loader=make_loader(test_df, feature_cols, batch_size),
-        cross_eval_loader=None if cross_eval_df is None else make_loader(cross_eval_df, feature_cols, batch_size),
+        train_loader=make_loader(train_df, tensor_cols, batch_size, shuffle=True),
+        val_loader=make_loader(val_df, tensor_cols, batch_size),
+        test_loader=make_loader(test_df, tensor_cols, batch_size),
+        cross_eval_loader=None if cross_eval_df is None else make_loader(cross_eval_df, tensor_cols, batch_size),
         features=feature_cols,
+        tensor_features=tensor_cols,
+        model_feature_count=len(feature_cols),
         labels=config["data"]["labels"],
         scaler=scaler,
         scaled_attack_specs=make_scaled_attack_specs(config["attack_specs"], scaler, scale_cols),

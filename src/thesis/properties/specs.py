@@ -22,7 +22,6 @@ def make_scaled_attack_specs(raw_specs: dict, scaler, scale_cols: list[str]) -> 
         },
         "portscan": {
             "min_uniq_dst_ports": "uniq_dst_ports",
-            "max_pkts_per_port": "pkts_per_port",
             "max_scan_duration": "scan_duration",
             "min_fail_ratio": "fail_ratio",
         },

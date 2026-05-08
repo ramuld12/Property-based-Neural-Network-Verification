@@ -21,6 +21,7 @@ class PropertyTrainingContext:
     scale_cols: list[str]
     labels: list[str]
     device: torch.device
+    model_feature_count: int
     lambda_dos: float
     lambda_scan: float
 
@@ -93,7 +94,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
         x = x.to(ctx.device)
         y = y.to(ctx.device)
         optimizer.zero_grad()
-        ce_loss = ce_fn(model(x), y)
+        ce_loss = ce_fn(model(x[:, : ctx.model_feature_count]), y)
         constraint_loss = torch.tensor(0.0, device=ctx.device)
 
         dos_mask = rule_mask(ctx.constraints["dos"], model, x, y, ctx.constraints["dos_class"])
@@ -142,7 +143,7 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext) -> tupl
         x = x.to(ctx.device)
         y = y.to(ctx.device)
         with torch.no_grad():
-            preds = model(x).argmax(dim=1)
+            preds = model(x[:, : ctx.model_feature_count]).argmax(dim=1)
         y_true.extend(y.cpu().numpy())
         y_pred.extend(preds.cpu().numpy())
 
@@ -198,6 +199,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
         scale_cols=data.scale_cols,
         labels=data.labels,
         device=device,
+        model_feature_count=data.model_feature_count,
         lambda_dos=prop_cfg["lambda_dos"],
         lambda_scan=prop_cfg["lambda_scan"],
     )
@@ -236,7 +238,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             f"adv_scan_loss={val_metrics['adv_scan_loss']:.4f} " 
             f"adv_scan_sat={val_metrics['adv_scan_sat']:.4f} \n" 
             f"score={score:.4f}" 
-        ) 
+        )
         print_rule_stats("DoS HTTP Flood", train_metrics["dos_debug_stats"])
         print_rule_stats("Portscan", train_metrics["scan_debug_stats"])
 
@@ -249,6 +251,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             epochs_without_improvement += 1
 
         if epochs_without_improvement >= config["model"].get("patience", 5):
+            print(f"Early stopping at epoch: {epoch}. Best epoch {best_epoch} withy score: {best_score}")
             break
 
     model.load_state_dict(best_state)
