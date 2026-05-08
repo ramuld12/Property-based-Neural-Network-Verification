@@ -155,6 +155,7 @@ tmp/
 # Models and experiments
 */models/
 experiments/
+outputs/
 
 # Ignore pcap files
 *.pcap

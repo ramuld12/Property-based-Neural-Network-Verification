@@ -1,0 +1,255 @@
+from __future__ import annotations
+
+import copy
+from dataclasses import dataclass
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import property_driven_ml.logics as logics
+import property_driven_ml.training as pml_training
+from sklearn.metrics import f1_score
+
+
+@dataclass
+class PropertyTrainingContext:
+    logic: object
+    constraints: dict
+    oracle: object
+    scaler: object
+    scale_cols: list[str]
+    labels: list[str]
+    device: torch.device
+    lambda_dos: float
+    lambda_scan: float
+
+
+def make_weighted_ce_loss(train_df: pd.DataFrame, device: torch.device) -> nn.CrossEntropyLoss:
+    class_counts = train_df["label_id"].value_counts().sort_index().to_numpy()
+    class_weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)
+    class_weights = (class_weights / class_weights.mean()).to(device)
+    print("class_counts:", class_counts)
+    print("class_weights:", class_weights)
+    return nn.CrossEntropyLoss(weight=class_weights)
+
+
+def build_logic(name: str):
+    name = name.lower()
+    if name == "goedel":
+        return logics.GoedelFuzzyLogic()
+    elif name == "boolean":
+        return logics.BooleanLogic()
+    elif name == "dl2":
+        return logics.DL2()
+
+
+def precondition_bounds(precondition, x):
+    if hasattr(precondition, "get_bounds"):
+        return precondition.get_bounds(x)
+    return precondition.get_precondition(x)
+
+
+def project_adv_if_global(x_adv, x, constraint):
+    lo, hi = precondition_bounds(constraint.precondition, x)
+    return torch.max(torch.min(x_adv, hi), lo)
+
+
+def make_consistent_adversarial(model, oracle, x, constraint):
+    x_adv = oracle.attack(model, x, None, constraint)
+    return project_adv_if_global(x_adv, x, constraint)
+
+
+@torch.no_grad()
+def rule_mask(constraint, model, x, y, class_idx):
+    parts = constraint.postcondition.debug_parts(model, x, x)
+    return (y == class_idx) & parts["antecedent_true"]
+
+
+def update_rule_stats_for_label(stats: dict, parts: dict, y: torch.Tensor, class_idx: int) -> None:
+    label_mask = y == class_idx
+    for name, mask in parts.items():
+        filtered_mask = mask.detach().bool()[label_mask]
+        stats.setdefault(name, {"true": 0, "total": 0})
+        stats[name]["true"] += filtered_mask.sum().item()
+        stats[name]["total"] += filtered_mask.numel()
+
+
+def print_rule_stats(name: str, stats: dict) -> None:
+    if not stats:
+        return
+    print(f"\n{name} rule debug - true-label rows only")
+    for part_name, values in stats.items():
+        true = values["true"]
+        total = values["total"]
+        print(f"{part_name:25s} {true:8d}/{total:<8d}  {true / max(total, 1):.4f}")
+
+
+def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: PropertyTrainingContext, epoch: int) -> dict:
+    model.train()
+    totals = {"ce_loss": 0.0, "scaled_dos_loss": 0.0, "scaled_scan_loss": 0.0, "dos_sat": 0.0, "scan_sat": 0.0}
+    dos_debug_stats, scan_debug_stats = {}, {}
+    for x, y in loader:
+        x = x.to(ctx.device)
+        y = y.to(ctx.device)
+        optimizer.zero_grad()
+        ce_loss = ce_fn(model(x), y)
+        constraint_loss = torch.tensor(0.0, device=ctx.device)
+
+        dos_mask = rule_mask(ctx.constraints["dos"], model, x, y, ctx.constraints["dos_class"])
+        if dos_mask.any():
+            x_dos = x[dos_mask]
+            y_dos = y[dos_mask]
+            x_adv = make_consistent_adversarial(model, oracle, x_dos, ctx.constraints["dos"])
+            dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x_dos, x_adv, None, ctx.logic, reduction="mean")
+            constraint_loss = constraint_loss + ctx.lambda_dos * dos_loss
+            totals["scaled_dos_loss"] += ctx.lambda_dos * dos_loss.item()
+            totals["dos_sat"] += dos_sat.item()
+            update_rule_stats_for_label(dos_debug_stats, ctx.constraints["dos"].postcondition.debug_parts(model, x_dos, x_adv), y_dos, ctx.constraints["dos_class"])
+
+        scan_mask = rule_mask(ctx.constraints["scan"], model, x, y, ctx.constraints["scan_class"])
+        if scan_mask.any():
+            x_scan = x[scan_mask]
+            y_scan = y[scan_mask]
+            x_adv = make_consistent_adversarial(model, oracle, x_scan, ctx.constraints["scan"])
+            scan_loss, scan_sat = ctx.constraints["scan"].eval(model, x_scan, x_adv, None, ctx.logic, reduction="mean")
+            constraint_loss = constraint_loss + ctx.lambda_scan * scan_loss
+            totals["scaled_scan_loss"] += ctx.lambda_scan * scan_loss.item()
+            totals["scan_sat"] += scan_sat.item()
+            update_rule_stats_for_label(scan_debug_stats, ctx.constraints["scan"].postcondition.debug_parts(model, x_scan, x_adv), y_scan, ctx.constraints["scan_class"])
+
+        if epoch > 3:
+            grad_norm.balance(ce_loss, constraint_loss)
+        else:
+            ce_loss.backward()
+            optimizer.step()
+
+        totals["ce_loss"] += ce_loss.item()
+
+    metrics = {key: value / len(loader) for key, value in totals.items()}
+    metrics["dos_debug_stats"] = dos_debug_stats
+    metrics["scan_debug_stats"] = scan_debug_stats
+    return metrics
+
+
+def evaluate_property_model(model, loader, ctx: PropertyTrainingContext) -> tuple[dict, np.ndarray, np.ndarray]:
+    model.eval()
+    y_true, y_pred = [], []
+    totals = {"adv_dos_loss": 0.0, "adv_scan_loss": 0.0, "adv_dos_sat": 0.0, "adv_scan_sat": 0.0}
+    counts = {"dos": 0, "scan": 0}
+
+    for x, y in loader:
+        x = x.to(ctx.device)
+        y = y.to(ctx.device)
+        with torch.no_grad():
+            preds = model(x).argmax(dim=1)
+        y_true.extend(y.cpu().numpy())
+        y_pred.extend(preds.cpu().numpy())
+
+        dos_mask = rule_mask(ctx.constraints["dos"], model, x, y, ctx.constraints["dos_class"])
+        if dos_mask.any():
+            x_dos = x[dos_mask]
+            x_adv = make_consistent_adversarial(model, ctx.oracle, x_dos, ctx.constraints["dos"])
+            with torch.no_grad():
+                loss, sat = ctx.constraints["dos"].eval(model, x_dos, x_adv, None, ctx.logic, reduction="sum")
+            totals["adv_dos_loss"] += loss.item()
+            totals["adv_dos_sat"] += sat.item()
+            counts["dos"] += x_dos.size(0)
+
+        scan_mask = rule_mask(ctx.constraints["scan"], model, x, y, ctx.constraints["scan_class"])
+        if scan_mask.any():
+            x_scan = x[scan_mask]
+            x_adv = make_consistent_adversarial(model, ctx.oracle, x_scan, ctx.constraints["scan"])
+            with torch.no_grad():
+                loss, sat = ctx.constraints["scan"].eval(model, x_scan, x_adv, None, ctx.logic, reduction="sum")
+            totals["adv_scan_loss"] += loss.item()
+            totals["adv_scan_sat"] += sat.item()
+            counts["scan"] += x_scan.size(0)
+
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    attack_ids = list(range(1, len(ctx.labels)))
+    metrics = {
+        "acc": float((y_true == y_pred).mean()),
+        "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
+        "attack_macro_f1": float(f1_score(y_true, y_pred, labels=attack_ids, average="macro", zero_division=0)),
+        "adv_dos_loss": totals["adv_dos_loss"] / max(counts["dos"], 1),
+        "adv_scan_loss": totals["adv_scan_loss"] / max(counts["scan"], 1),
+        "adv_dos_sat": totals["adv_dos_sat"] / max(counts["dos"], 1),
+        "adv_scan_sat": totals["adv_scan_sat"] / max(counts["scan"], 1),
+    }
+    return metrics, y_true, y_pred
+
+
+def model_selection_score(metrics: dict) -> float:
+    return 2.0 * metrics["attack_macro_f1"] + 0.5 * metrics["macro_f1"] + 0.5 * metrics["adv_dos_sat"] + 0.5 * metrics["adv_scan_sat"] + 0.5 * metrics["acc"]
+
+
+def train_property_classifier(model, data, constraints: dict, config: dict, device):
+    model = model.to(device)
+    prop_cfg = config["properties"]
+    logic = build_logic(prop_cfg.get("logic", "dl2"))
+    oracle = pml_training.PGD(logic, device, steps=prop_cfg["pgd_steps"], restarts=prop_cfg["pgd_restarts"], step_size=prop_cfg["pgd_step_size"])
+    ctx = PropertyTrainingContext(
+        logic=logic,
+        constraints=constraints,
+        oracle=oracle,
+        scaler=data.scaler,
+        scale_cols=data.scale_cols,
+        labels=data.labels,
+        device=device,
+        lambda_dos=prop_cfg["lambda_dos"],
+        lambda_scan=prop_cfg["lambda_scan"],
+    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=config["model"]["learning_rate"])
+    grad_norm = pml_training.GradNorm(model, device, optimizer, lr=config["model"]["learning_rate"], alpha=1.5)
+    ce_fn = make_weighted_ce_loss(data.train_df, device)
+
+    best_score = -float("inf")
+    best_state = copy.deepcopy(model.state_dict())
+    best_epoch = 0
+    epochs_without_improvement = 0
+    history = []
+
+    for epoch in range(1, config["model"]["epochs"] + 1):
+        train_metrics = train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, data.train_loader, ctx, epoch)
+        val_metrics, _, _ = evaluate_property_model(model, data.val_loader, ctx)
+        score = model_selection_score(val_metrics)
+        history.append({
+            "epoch": epoch,
+            **{f"train_{k}": v for k, v in train_metrics.items() if not k.endswith("_stats")},
+            **{f"val_{k}": v for k, v in val_metrics.items()},
+            "selection_score": score,
+        })
+        print( 
+            f"epoch={epoch} \n" 
+            f"----- TRAIN -----\n" 
+            f"ce_loss={train_metrics['ce_loss']:.4f} " 
+            f"scaled_dos_loss={train_metrics['scaled_dos_loss']:.4f} " 
+            f"scaled_scan_loss={train_metrics['scaled_scan_loss']:.4f} " 
+            f"dos_sat={train_metrics['dos_sat']:.4f} " 
+            f"scan_sat={train_metrics['scan_sat']:.4f} \n " 
+            f"----- VALIDATION -----\n" f"attack_f1={val_metrics['attack_macro_f1']:.4f} " 
+            f"acc={val_metrics['acc']:.4f} " 
+            f"adv_dos_loss={val_metrics['adv_dos_loss']:.4f} " 
+            f"adv_dos_sat={val_metrics['adv_dos_sat']:.4f} " 
+            f"adv_scan_loss={val_metrics['adv_scan_loss']:.4f} " 
+            f"adv_scan_sat={val_metrics['adv_scan_sat']:.4f} \n" 
+            f"score={score:.4f}" 
+        ) 
+        print_rule_stats("DoS HTTP Flood", train_metrics["dos_debug_stats"])
+        print_rule_stats("Portscan", train_metrics["scan_debug_stats"])
+
+        if score > best_score + config["model"].get("min_delta", 1e-4):
+            best_score = score
+            best_state = copy.deepcopy(model.state_dict())
+            best_epoch = epoch
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        if epochs_without_improvement >= config["model"].get("patience", 5):
+            break
+
+    model.load_state_dict(best_state)
+    return model, pd.DataFrame(history), ctx, best_epoch, best_score
