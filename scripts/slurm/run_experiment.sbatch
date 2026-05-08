@@ -12,6 +12,7 @@ METHOD="${2:?Usage: sbatch run_experiment.sbatch <config.yaml> <baseline|propert
 
 echo "Running on $(hostname)"
 echo "Working directory: $(pwd)"
+nvidia-smi
 
 mkdir -p outputs/slurm
 
@@ -25,6 +26,7 @@ conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 eval "$(conda shell.bash hook)"
 
 ENV_NAME='thesis'
+
 if ! conda env list | grep -q "$ENV_NAME"; then
     echo 'Creating new conda env...'
     conda create --name "$ENV_NAME" python=3.11 -y
@@ -33,13 +35,14 @@ else
     echo "Environment '$ENV_NAME' already exists."
 fi
 conda activate $ENV_NAME
-echo "Python version: $(python3 --version)"
+echo "Python version: $(python --version)"
 
-pip3 install -r requirements.txt
-pip3 install --index-url https://download.pytorch.org/whl/cu126 torch torchvision torchaudio torchmetrics
-python3 -c "import torch; print('CUDA:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-
-pip3 install -e .
+pip install --index-url https://download.pytorch.org/whl/cu126 torch torchvision torchaudio torchmetrics
+python -c "import torch; print('CUDA:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+pip install -r requirements.txt
 
 
-python3 -m thesis.cli run "$METHOD" --config "$CONFIG_PATH"
+pip install -e .
+
+
+python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH"
