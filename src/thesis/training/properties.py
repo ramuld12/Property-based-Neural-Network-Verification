@@ -250,9 +250,9 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
         else:
             epochs_without_improvement += 1
 
-        if epochs_without_improvement >= config["model"].get("patience", 5):
-            print(f"Early stopping at epoch: {epoch}. Best epoch {best_epoch} withy score: {best_score}")
-            break
+        # if epochs_without_improvement >= config["model"].get("patience", 5):
+        #     print(f"Early stopping at epoch: {epoch}. Best epoch {best_epoch} withy score: {best_score}")
+        #     break
 
     model.load_state_dict(best_state)
     return model, pd.DataFrame(history), ctx, best_epoch, best_score

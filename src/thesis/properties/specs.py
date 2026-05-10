@@ -11,19 +11,10 @@ def scale_value(col: str, raw_value: float, scaler, scale_cols: list[str]) -> fl
 def make_scaled_attack_specs(raw_specs: dict, scaler, scale_cols: list[str]) -> dict:
     specs = copy.deepcopy(raw_specs)
     scale_map = {
-        "validity": {
-            "valid_packet_size_min_pkts": "orig_pkts",
-            "valid_packet_size_min_total_bytes": "orig_bytes",
-        },
         "dos_http_flood": {
             "mal_time_elapsed_min": "time_elapsed",
             "mal_time_elapsed_max": "time_elapsed",
             "valid_pkt_size_total_min": "orig_bytes",
-        },
-        "portscan": {
-            "min_uniq_dst_ports": "uniq_dst_ports",
-            "max_scan_duration": "scan_duration",
-            "min_fail_ratio": "fail_ratio",
         },
     }
     for attack_name, key_to_col in scale_map.items():

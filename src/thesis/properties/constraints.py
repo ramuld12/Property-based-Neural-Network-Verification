@@ -42,7 +42,6 @@ class DoSHttpFloodPostcondition(Postcondition):
         idx,
         class_idx,
         dos_http_flood_specs,
-        validity_specs,
         scaler,
         scale_cols,
         model_feature_count,
@@ -52,7 +51,6 @@ class DoSHttpFloodPostcondition(Postcondition):
         self.class_idx = class_idx
         self.min_prob = min_prob
         self.dos_http_flood_specs = dos_http_flood_specs
-        self.validity_specs = validity_specs
         self.scaler = scaler
         self.scale_cols = scale_cols
         self.model_feature_count = model_feature_count
@@ -74,22 +72,33 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
         orig_bytes = x_adv[:, self.idx["orig_bytes"]]
-        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
+        raw_orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
+        raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
+        orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
         orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
-        p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        # p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        logits = N(x_adv[:, : self.model_feature_count])
+        dos_logit = logits[:, self.class_idx]
+
+        other_logits = logits.clone()
+        other_logits[:, self.class_idx] = -torch.inf
+        max_other_logit = other_logits.max(dim=1).values
         return lambda logic: logic.OR(
-            logic.LT(orig_bytes, torch.full_like(orig_bytes, self.validity_specs["valid_packet_size_min_total_bytes"])),
-            logic.LT(orig_pkts, torch.full_like(orig_pkts, self.validity_specs["valid_packet_size_min_pkts"])),
+            logic.LT(orig_bytes_per_packet, torch.full_like(orig_bytes_per_packet, self.dos_http_flood_specs["valid_packet_size_individual_min"])),
+            logic.LT(orig_bytes, torch.full_like(orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
             logic.NEQ(valid_tcp, torch.ones_like(valid_tcp)),
             logic.NEQ(valid_http, torch.ones_like(valid_http)),
-            logic.LT(orig_bytes, torch.full_like(orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
             logic.LT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_min"])),
             logic.GT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_max"])),
-            logic.AND(
+            logic.OR(
                 logic.LT(orig_byte_rate, torch.full_like(orig_byte_rate, self.dos_http_flood_specs["mal_byte_rate_min"])),
                 logic.LT(orig_pkt_rate, torch.full_like(orig_pkt_rate, self.dos_http_flood_specs["mal_pkt_rate_min"])),
             ),
-            logic.GEQ(p, torch.full_like(p, self.min_prob)),
+
+            # DOS_HTTP_FLOOD /prediction certainty
+            # logic.GEQ(p, torch.full_like(p, self.min_prob))
+            # Otherwise, model must predict DOS_HTTP_FLOOD
+            logic.GEQ(dos_logit, max_other_logit),
         )
 
     @torch.no_grad()
@@ -98,12 +107,20 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
         orig_bytes = x_adv[:, self.idx["orig_bytes"]]
-        orig_pkts = x_adv[:, self.idx["orig_pkts"]]
+        raw_orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
+        raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
+        orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
         orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
-        p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        # p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        logits = N(x_adv[:, : self.model_feature_count])
+        dos_logit = logits[:, self.class_idx]
+
+        other_logits = logits.clone()
+        other_logits[:, self.class_idx] = -torch.inf
+        max_other_logit = other_logits.max(dim=1).values
         parts = {
-            "valid_input": (orig_bytes >= self.validity_specs["valid_packet_size_min_total_bytes"])
-            & (orig_pkts >= self.validity_specs["valid_packet_size_min_pkts"]),
+            "valid_input": (orig_bytes_per_packet >= self.dos_http_flood_specs["valid_packet_size_individual_min"])
+            & (raw_orig_pkts >= 1.0),
             "valid_tcp_handshake": valid_tcp == 1,
             "valid_http_conn": valid_http == 1,
             "mal_time_elapsed_min": time_elapsed >= self.dos_http_flood_specs["mal_time_elapsed_min"],
@@ -111,7 +128,7 @@ class DoSHttpFloodPostcondition(Postcondition):
             "valid_pkt_size_total_min": orig_bytes >= self.dos_http_flood_specs["valid_pkt_size_total_min"],
             "mal_byte_rate_min": orig_byte_rate >= self.dos_http_flood_specs["mal_byte_rate_min"],
             "mal_pkt_rate_min": orig_pkt_rate >= self.dos_http_flood_specs["mal_pkt_rate_min"],
-            "prediction_ok": p >= self.min_prob,
+            "prediction_ok": dos_logit >= max_other_logit,
         }
         parts["antecedent_true"] = (
             parts["valid_input"]
@@ -141,46 +158,72 @@ class PortscanPostcondition(Postcondition):
         max_ = torch.tensor(self.scaler.data_max_[i], device=x_col.device, dtype=x_col.dtype)
         return x_col * (max_ - min_ + 1e-8) + min_
 
-    def pkts_per_port_from_adv(self, x, x_adv):
+    def scale_col(self, raw_col, col):
+        i = self.scale_cols.index(col)
+        min_ = torch.tensor(self.scaler.data_min_[i], device=raw_col.device, dtype=raw_col.dtype)
+        max_ = torch.tensor(self.scaler.data_max_[i], device=raw_col.device, dtype=raw_col.dtype)
+        return (raw_col - min_) / (max_ - min_ + 1e-8)
+
+    def round_ste(self, value):
+        return value + (torch.round(value) - value).detach()
+
+    def adv_values(self, x, x_adv):
         total_orig_pkts = self.raw_col(x[:, self.idx["total_orig_pkts"]], "total_orig_pkts")
         orig_pkts = self.raw_col(x[:, self.idx["orig_pkts"]], "orig_pkts")
         adv_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts")
-        uniq_dst_ports = self.raw_col(x[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports").clamp_min(1e-8)
+        uniq_dst_ports = self.round_ste(self.raw_col(x_adv[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports")).clamp_min(1.0)
         adv_total_orig_pkts = (total_orig_pkts - orig_pkts + adv_orig_pkts).clamp_min(0.0)
-        return adv_total_orig_pkts / uniq_dst_ports
+        pkts_per_port = adv_total_orig_pkts / uniq_dst_ports.clamp_min(1e-8)
+        max_duration_without_row = self.raw_col(
+            x[:, self.idx["max_duration_without_current_row"]],
+            "max_duration_without_current_row",
+        )
+        adv_duration = self.raw_col(x_adv[:, self.idx["duration"]], "duration")
+        scan_duration = torch.maximum(adv_duration, max_duration_without_row)
+        fail_ratio = self.raw_col(x_adv[:, self.idx["fail_ratio"]], "fail_ratio")
+        corrected_adv = x_adv.clone()
+        corrected_adv[:, self.idx["uniq_dst_ports"]] = self.scale_col(uniq_dst_ports, "uniq_dst_ports")
+        corrected_adv[:, self.idx["scan_duration"]] = self.scale_col(scan_duration, "scan_duration")
+        return uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration, corrected_adv
 
     def get_postcondition(self, N, x, x_adv):
-        uniq_dst_ports = x[:, self.idx["uniq_dst_ports"]]
-        fail_ratio = x[:, self.idx["fail_ratio"]]
-        pkts_per_port = self.pkts_per_port_from_adv(x, x_adv)
-        scan_duration = x[:, self.idx["scan_duration"]]
-        p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration, corrected_adv = self.adv_values(x, x_adv)
+        # p = F.softmax(N(corrected_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        logits = N(x_adv[:, : self.model_feature_count])
+        scan_logit = logits[:, self.class_idx]
+
+        other_logits = logits.clone()
+        other_logits[:, self.class_idx] = -torch.inf
+        max_other_logit = other_logits.max(dim=1).values
         return lambda logic: logic.OR(
-            logic.LT(uniq_dst_ports, torch.full_like(uniq_dst_ports, self.portscan_specs["min_uniq_dst_ports"])),
+            logic.LT(uniq_dst_ports, torch.full_like(uniq_dst_ports, self.portscan_specs["mal_uniq_dst_ports_min"])),
             logic.AND(
-                logic.LEQ(fail_ratio, torch.full_like(fail_ratio, self.portscan_specs["min_fail_ratio"])),
-                logic.GT(pkts_per_port, torch.full_like(pkts_per_port, self.portscan_specs["max_pkts_per_port"])),
-                logic.GEQ(scan_duration, torch.full_like(scan_duration, self.portscan_specs["max_scan_duration"])),
+                logic.LEQ(fail_ratio, torch.full_like(fail_ratio, self.portscan_specs["mal_fail_ratio_min"])),
+                logic.GT(pkts_per_port, torch.full_like(pkts_per_port, self.portscan_specs["mal_pkts_per_port_max"])),
+                logic.GEQ(scan_duration, torch.full_like(scan_duration, self.portscan_specs["mal_scan_duration_max"])),
             ),
-            logic.GEQ(p, torch.full_like(p, self.min_prob)),
+            logic.GEQ(scan_logit, max_other_logit)
         )
 
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
-        uniq_dst_ports = x[:, self.idx["uniq_dst_ports"]]
-        fail_ratio = x[:, self.idx["fail_ratio"]]
-        pkts_per_port = self.pkts_per_port_from_adv(x, x_adv)
-        scan_duration = x[:, self.idx["scan_duration"]]
-        p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration, corrected_adv = self.adv_values(x, x_adv)
+        # p = F.softmax(N(corrected_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        logits = N(x_adv[:, : self.model_feature_count])
+        scan_logit = logits[:, self.class_idx]
+
+        other_logits = logits.clone()
+        other_logits[:, self.class_idx] = -torch.inf
+        max_other_logit = other_logits.max(dim=1).values
         parts = {
-            "min_uniq_dst_ports": uniq_dst_ports >= self.portscan_specs["min_uniq_dst_ports"],
-            "min_fail_ratio": fail_ratio >= self.portscan_specs["min_fail_ratio"],
-            "max_pkts_per_port": pkts_per_port <= self.portscan_specs["max_pkts_per_port"],
-            "max_scan_duration": scan_duration <= self.portscan_specs["max_scan_duration"],
-            "prediction_ok": p >= self.min_prob,
+            "mal_uniq_dst_ports_min": uniq_dst_ports >= self.portscan_specs["mal_uniq_dst_ports_min"],
+            "mal_fail_ratio_min": fail_ratio >= self.portscan_specs["mal_fail_ratio_min"],
+            "mal_pkts_per_port_max": pkts_per_port <= self.portscan_specs["mal_pkts_per_port_max"],
+            "mal_scan_duration_max": scan_duration <= self.portscan_specs["mal_scan_duration_max"],
+            "prediction_ok": scan_logit >= max_other_logit,
         }
-        parts["scan_signal"] = parts["min_fail_ratio"] | parts["max_pkts_per_port"] | parts["max_scan_duration"]
-        parts["antecedent_true"] = parts["min_uniq_dst_ports"] & parts["scan_signal"]
+        parts["scan_signal"] = parts["mal_fail_ratio_min"] | parts["mal_pkts_per_port_max"] | parts["mal_scan_duration_max"]
+        parts["antecedent_true"] = parts["mal_uniq_dst_ports_min"] & parts["scan_signal"]
         return parts
 
 
@@ -225,7 +268,6 @@ def build_constraints(
                 idx=idx,
                 class_idx=dos_target,
                 dos_http_flood_specs=scaled_attack_specs["dos_http_flood"],
-                validity_specs=scaled_attack_specs["validity"],
                 scaler=scaler,
                 scale_cols=scale_cols,
                 model_feature_count=model_feature_count,

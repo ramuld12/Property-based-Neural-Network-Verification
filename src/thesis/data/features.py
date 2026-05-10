@@ -29,8 +29,7 @@ BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
 
 def property_features(config: dict) -> list[str]:
-    features = config["features"]
-    return features.get("numeric", MODEL_NUMERIC_FEATURES) + features.get("engineered", ENGINEERED_FEATURES)
+    return MODEL_NUMERIC_FEATURES + ENGINEERED_FEATURES
 
 
 def baseline_features(config: dict) -> tuple[list[str], list[str], list[str]]:

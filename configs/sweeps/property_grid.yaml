@@ -13,4 +13,4 @@ grid:
   preconditions.default.params.upper_bound: [1.0]
   attack_specs.dos_http_flood.mal_byte_rate_min: [100.0, 200.0]
   attack_specs.dos_http_flood.mal_pkt_rate_min: [3.0, 5.0]
-  attack_specs.portscan.min_uniq_dst_ports: [10.0, 20.0]
+  attack_specs.portscan.mal_uniq_dst_ports_min: [10.0, 20.0]

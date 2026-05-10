@@ -11,26 +11,6 @@ data:
   test_size: 0.3
   val_size: 0.2
 
-features:
-  set: engineered
-  categorical: [proto, service, conn_state, history]
-  numeric:
-    - duration
-    - orig_bytes
-    - resp_bytes
-    - missed_bytes
-    - orig_pkts
-    - orig_ip_bytes
-    - resp_pkts
-    - resp_ip_bytes
-  engineered:
-    - time_elapsed
-    - valid_tcp_handshake
-    - valid_http_conn
-    - uniq_dst_ports
-    - scan_duration
-    - fail_ratio
-
 model:
   type: mlp
   batch_size: 2048

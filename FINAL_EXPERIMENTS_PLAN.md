@@ -4,8 +4,8 @@ Use this file as the checklist for the final experiment section.
 
 ## Dataset Readiness
 
-- [ ] Verify `data/ciciot2023_preprocessed.tsv` is present and contains the expected labels.
-- [ ] Verify `data/cicids2017_preprocessed.tsv` is present and contains the expected labels.
+- [x] Verify `data/ciciot2023_preprocessed.tsv` is present and contains the expected labels.
+- [x] Verify `data/cicids2017_preprocessed.tsv` is present and contains the expected labels.
 - [ ] Generate a richer CICIDS2017 dataset with more attack types, or decide to use CICIDS2018 instead.
 - [ ] Confirm label names match the final experiment configs.
 - [ ] Confirm engineered features exist in all final TSVs.
