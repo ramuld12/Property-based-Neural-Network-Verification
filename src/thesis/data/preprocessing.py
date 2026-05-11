@@ -58,27 +58,33 @@ def make_loader(df: pd.DataFrame, feature_cols: list[str], batch_size: int, shuf
 
 
 def add_property_aux_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
+    df["duration"] = pd.to_numeric(df["duration"], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    df["orig_pkts"] = pd.to_numeric(df["orig_pkts"], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     df["total_orig_pkts"] = df.groupby(["id.orig_h", "window_id"])["orig_pkts"].transform("sum")
-    grouped_duration = df.groupby(["id.orig_h", "window_id"])["duration"]
-    df["window_max_duration"] = grouped_duration.transform("max")
-    df["window_duration_rank"] = grouped_duration.rank(method="min", ascending=False)
-    df["window_max_duration_count"] = grouped_duration.transform(lambda s: (s == s.max()).sum())
-    second_duration = (
-        df[df["window_duration_rank"] > 1]
-        .groupby(["id.orig_h", "window_id"])["duration"]
+    df["flow_end_ts"] = df["ts"] + df["duration"]
+    grouped_flow_end = df.groupby(["id.orig_h", "window_id"])["flow_end_ts"]
+    df["window_min_ts"] = df.groupby(["id.orig_h", "window_id"])["ts"].transform("min")
+    df["window_max_flow_end"] = grouped_flow_end.transform("max")
+    df["window_flow_end_rank"] = grouped_flow_end.rank(method="min", ascending=False)
+    df["window_max_flow_end_count"] = grouped_flow_end.transform(lambda s: (s == s.max()).sum())
+    second_flow_end = (
+        df[df["window_flow_end_rank"] > 1]
+        .groupby(["id.orig_h", "window_id"])["flow_end_ts"]
         .max()
-        .rename("window_second_max_duration")
+        .rename("window_second_max_flow_end")
     )
-    df = df.merge(second_duration, on=["id.orig_h", "window_id"], how="left")
-    df["window_second_max_duration"] = df["window_second_max_duration"].fillna(0.0)
-    unique_max = (df["duration"] == df["window_max_duration"]) & (df["window_max_duration_count"] == 1)
-    df["max_duration_without_current_row"] = df["window_max_duration"].where(~unique_max, df["window_second_max_duration"])
+    df = df.merge(second_flow_end, on=["id.orig_h", "window_id"], how="left")
+    df["window_second_max_flow_end"] = df["window_second_max_flow_end"].fillna(df["window_min_ts"])
+    unique_max = (df["flow_end_ts"] == df["window_max_flow_end"]) & (df["window_max_flow_end_count"] == 1)
+    df["max_flow_end_without_current_row"] = df["window_max_flow_end"].where(~unique_max, df["window_second_max_flow_end"])
     df.drop(
         columns=[
-            "window_max_duration",
-            "window_duration_rank",
-            "window_max_duration_count",
-            "window_second_max_duration",
+            "flow_end_ts",
+            "window_max_flow_end",
+            "window_flow_end_rank",
+            "window_max_flow_end_count",
+            "window_second_max_flow_end",
         ],
         inplace=True,
     )
@@ -91,7 +97,7 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
     val_df = data.val.copy()
     test_df = data.test.copy()
     cross_eval_df = None if data.cross_eval is None else data.cross_eval.copy()
-    aux_cols = ["total_orig_pkts", "max_duration_without_current_row"]
+    aux_cols = ["ts", "total_orig_pkts", "window_min_ts", "max_flow_end_without_current_row"]
     tensor_cols = feature_cols + [col for col in aux_cols if col not in feature_cols]
     scale_cols = [col for col in tensor_cols if col not in BOOLEAN_FEATURES]
 
