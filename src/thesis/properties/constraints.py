@@ -90,7 +90,7 @@ class DoSHttpFloodPostcondition(Postcondition):
             # ValidHTTPConnection
             logic.NEQ(valid_http, torch.ones_like(valid_http)),
 
-            # ValidTomeElapsed
+            # ValidTimeElapsed
             logic.LT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_min"])),
             logic.GT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_max"])),
 
