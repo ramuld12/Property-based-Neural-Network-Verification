@@ -3,7 +3,6 @@ from __future__ import annotations
 """Tabular property constraints for property-driven training."""
 
 import torch
-import torch.nn.functional as F
 from property_driven_ml.constraints.constraints import Constraint
 from property_driven_ml.constraints.postconditions import Postcondition
 import property_driven_ml.constraints.preconditions as pml_preconditions
@@ -45,11 +44,9 @@ class DoSHttpFloodPostcondition(Postcondition):
         scaler,
         scale_cols,
         model_feature_count,
-        min_prob=0.80,
     ):
         self.idx = idx
         self.class_idx = class_idx
-        self.min_prob = min_prob
         self.dos_http_flood_specs = dos_http_flood_specs
         self.scaler = scaler
         self.scale_cols = scale_cols
@@ -76,7 +73,6 @@ class DoSHttpFloodPostcondition(Postcondition):
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
         orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
-        # p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
         logits = N(x_adv[:, : self.model_feature_count])
         dos_logit = logits[:, self.class_idx]
 
@@ -104,7 +100,6 @@ class DoSHttpFloodPostcondition(Postcondition):
                 logic.LT(orig_pkt_rate, torch.full_like(orig_pkt_rate, self.dos_http_flood_specs["mal_pkt_rate_min"])),
             ),
 
-            # DOS_HTTP_FLOOD /prediction certainty
             logic.GEQ(dos_logit, max_other_logit),
         )
 
@@ -118,7 +113,6 @@ class DoSHttpFloodPostcondition(Postcondition):
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
         orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
-        # p = F.softmax(N(x_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
         logits = N(x_adv[:, : self.model_feature_count])
         dos_logit = logits[:, self.class_idx]
 
@@ -150,10 +144,9 @@ class DoSHttpFloodPostcondition(Postcondition):
 
 
 class PortscanPostcondition(Postcondition):
-    def __init__(self, idx, class_idx, min_prob, portscan_specs, scaler, scale_cols, model_feature_count):
+    def __init__(self, idx, class_idx, portscan_specs, scaler, scale_cols, model_feature_count):
         self.idx = idx
         self.class_idx = class_idx
-        self.min_prob = min_prob
         self.portscan_specs = portscan_specs
         self.scaler = scaler
         self.scale_cols = scale_cols
@@ -164,12 +157,6 @@ class PortscanPostcondition(Postcondition):
         min_ = torch.tensor(self.scaler.data_min_[i], device=x_col.device, dtype=x_col.dtype)
         max_ = torch.tensor(self.scaler.data_max_[i], device=x_col.device, dtype=x_col.dtype)
         return x_col * (max_ - min_ + 1e-8) + min_
-
-    def scale_col(self, raw_col, col):
-        i = self.scale_cols.index(col)
-        min_ = torch.tensor(self.scaler.data_min_[i], device=raw_col.device, dtype=raw_col.dtype)
-        max_ = torch.tensor(self.scaler.data_max_[i], device=raw_col.device, dtype=raw_col.dtype)
-        return (raw_col - min_) / (max_ - min_ + 1e-8)
 
     def round_ste(self, value):
         return value + (torch.round(value) - value).detach()
@@ -188,14 +175,10 @@ class PortscanPostcondition(Postcondition):
         adv_duration = self.raw_col(x_adv[:, self.idx["duration"]], "duration")
         scan_duration = torch.maximum(adv_duration, max_duration_without_row)
         fail_ratio = self.raw_col(x_adv[:, self.idx["fail_ratio"]], "fail_ratio")
-        corrected_adv = x_adv.clone()
-        corrected_adv[:, self.idx["uniq_dst_ports"]] = self.scale_col(uniq_dst_ports, "uniq_dst_ports")
-        corrected_adv[:, self.idx["scan_duration"]] = self.scale_col(scan_duration, "scan_duration")
-        return uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration, corrected_adv
+        return uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration
 
     def get_postcondition(self, N, x, x_adv):
-        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration, corrected_adv = self.adv_values(x, x_adv)
-        # p = F.softmax(N(corrected_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
         logits = N(x_adv[:, : self.model_feature_count])
         scan_logit = logits[:, self.class_idx]
 
@@ -214,8 +197,7 @@ class PortscanPostcondition(Postcondition):
 
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
-        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration, corrected_adv = self.adv_values(x, x_adv)
-        # p = F.softmax(N(corrected_adv[:, : self.model_feature_count]), dim=1)[:, self.class_idx]
+        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
         logits = N(x_adv[:, : self.model_feature_count])
         scan_logit = logits[:, self.class_idx]
 
@@ -252,11 +234,10 @@ def build_constraints(
     scaler,
     scale_cols,
     model_feature_count,
-    frozen_features=None,
-    min_prob: float = 0.8,
+    frozen_feature_names=None,
 ):
     idx = {name: i for i, name in enumerate(feature_cols)}
-    frozen_indices = sorted(set([idx[name] for name in (frozen_features or [])] + list(range(model_feature_count, len(feature_cols)))))
+    frozen_indices = sorted(set([idx[name] for name in (frozen_feature_names or [])] + list(range(model_feature_count, len(feature_cols)))))
     label_to_idx = {label: i for i, label in enumerate(labels)}
     dos_precondition = build_precondition(pick_precondition_config(preconditions, "dos_http_flood"), device)
     scan_precondition = build_precondition(pick_precondition_config(preconditions, "portscan"), device)
@@ -278,7 +259,6 @@ def build_constraints(
                 scaler=scaler,
                 scale_cols=scale_cols,
                 model_feature_count=model_feature_count,
-                min_prob=min_prob,
             ),
         ),
         "scan": TabularRuleConstraint(
@@ -287,7 +267,6 @@ def build_constraints(
             postcondition=PortscanPostcondition(
                 idx=idx,
                 class_idx=scan_target,
-                min_prob=min_prob,
                 portscan_specs=scaled_attack_specs["portscan"],
                 scaler=scaler,
                 scale_cols=scale_cols,

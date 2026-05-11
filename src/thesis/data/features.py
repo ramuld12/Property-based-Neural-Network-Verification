@@ -27,16 +27,17 @@ ENGINEERED_FEATURES = [
 
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
+PROPERTY_FROZEN_FEATURES = ["valid_tcp_handshake", "valid_http_conn", "time_elapsed"]
+
 
 def property_features(config: dict) -> list[str]:
     return MODEL_NUMERIC_FEATURES + ENGINEERED_FEATURES
 
 
 def baseline_features(config: dict) -> tuple[list[str], list[str], list[str]]:
-    features = config["features"]
-    categorical = features.get("categorical", MODEL_CATEGORICAL_FEATURES)
-    numeric = features.get("numeric", MODEL_NUMERIC_FEATURES)
-    engineered = features.get("engineered", []) if features.get("set") == "engineered" else []
+    categorical = MODEL_CATEGORICAL_FEATURES
+    numeric = MODEL_NUMERIC_FEATURES
+    engineered = ENGINEERED_FEATURES
     return categorical + numeric + engineered, categorical, numeric + engineered
 
 

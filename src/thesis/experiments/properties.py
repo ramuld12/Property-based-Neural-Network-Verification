@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 
 from thesis.data.datasets import load_experiment_data
-from thesis.data.features import property_features
+from thesis.data.features import PROPERTY_FROZEN_FEATURES, property_features
 from thesis.data.preprocessing import fit_property_data
 from thesis.experiments.common import make_run_dir, save_json, save_model, save_run_config, set_seed
 from thesis.models.torch_models import build_model
@@ -30,8 +30,7 @@ def run_properties(config: dict):
         scaler=data.scaler,
         scale_cols=data.scale_cols,
         model_feature_count=data.model_feature_count,
-        frozen_features=config["properties"].get("frozen_features", []),
-        min_prob=config["properties"].get("min_prob", 0.8),
+        frozen_feature_names=PROPERTY_FROZEN_FEATURES,
     )
     model = build_model(config["model"]["type"], n_features=len(data.features), num_classes=len(data.labels))
     model, history, ctx, best_epoch, best_score = train_property_classifier(model, data, constraints, config, device)

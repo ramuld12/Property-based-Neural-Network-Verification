@@ -17,8 +17,6 @@ class PropertyTrainingContext:
     logic: object
     constraints: dict
     oracle: object
-    scaler: object
-    scale_cols: list[str]
     labels: list[str]
     device: torch.device
     model_feature_count: int
@@ -67,10 +65,9 @@ def rule_mask(constraint, model, x, y, class_idx):
     return (y == class_idx) & parts["antecedent_true"]
 
 
-def update_rule_stats_for_label(stats: dict, parts: dict, y: torch.Tensor, class_idx: int) -> None:
-    label_mask = y == class_idx
+def update_rule_stats(stats: dict, parts: dict) -> None:
     for name, mask in parts.items():
-        filtered_mask = mask.detach().bool()[label_mask]
+        filtered_mask = mask.detach().bool()
         stats.setdefault(name, {"true": 0, "total": 0})
         stats[name]["true"] += filtered_mask.sum().item()
         stats[name]["total"] += filtered_mask.numel()
@@ -100,24 +97,22 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
         dos_mask = rule_mask(ctx.constraints["dos"], model, x, y, ctx.constraints["dos_class"])
         if dos_mask.any():
             x_dos = x[dos_mask]
-            y_dos = y[dos_mask]
             x_adv = make_consistent_adversarial(model, oracle, x_dos, ctx.constraints["dos"])
             dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x_dos, x_adv, None, ctx.logic, reduction="mean")
             constraint_loss = constraint_loss + ctx.lambda_dos * dos_loss
             totals["scaled_dos_loss"] += ctx.lambda_dos * dos_loss.item()
             totals["dos_sat"] += dos_sat.item()
-            update_rule_stats_for_label(dos_debug_stats, ctx.constraints["dos"].postcondition.debug_parts(model, x_dos, x_adv), y_dos, ctx.constraints["dos_class"])
+            update_rule_stats(dos_debug_stats, ctx.constraints["dos"].postcondition.debug_parts(model, x_dos, x_adv))
 
         scan_mask = rule_mask(ctx.constraints["scan"], model, x, y, ctx.constraints["scan_class"])
         if scan_mask.any():
             x_scan = x[scan_mask]
-            y_scan = y[scan_mask]
             x_adv = make_consistent_adversarial(model, oracle, x_scan, ctx.constraints["scan"])
             scan_loss, scan_sat = ctx.constraints["scan"].eval(model, x_scan, x_adv, None, ctx.logic, reduction="mean")
             constraint_loss = constraint_loss + ctx.lambda_scan * scan_loss
             totals["scaled_scan_loss"] += ctx.lambda_scan * scan_loss.item()
             totals["scan_sat"] += scan_sat.item()
-            update_rule_stats_for_label(scan_debug_stats, ctx.constraints["scan"].postcondition.debug_parts(model, x_scan, x_adv), y_scan, ctx.constraints["scan_class"])
+            update_rule_stats(scan_debug_stats, ctx.constraints["scan"].postcondition.debug_parts(model, x_scan, x_adv))
 
         if epoch > 3:
             grad_norm.balance(ce_loss, constraint_loss)
@@ -195,8 +190,6 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
         logic=logic,
         constraints=constraints,
         oracle=oracle,
-        scaler=data.scaler,
-        scale_cols=data.scale_cols,
         labels=data.labels,
         device=device,
         model_feature_count=data.model_feature_count,
@@ -210,7 +203,6 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
     best_score = -float("inf")
     best_state = copy.deepcopy(model.state_dict())
     best_epoch = 0
-    epochs_without_improvement = 0
     history = []
 
     for epoch in range(1, config["model"]["epochs"] + 1):
@@ -246,13 +238,6 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             best_score = score
             best_state = copy.deepcopy(model.state_dict())
             best_epoch = epoch
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
-
-        # if epochs_without_improvement >= config["model"].get("patience", 5):
-        #     print(f"Early stopping at epoch: {epoch}. Best epoch {best_epoch} withy score: {best_score}")
-        #     break
 
     model.load_state_dict(best_state)
     return model, pd.DataFrame(history), ctx, best_epoch, best_score

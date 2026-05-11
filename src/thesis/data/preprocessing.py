@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import MinMaxScaler, OrdinalEncoder, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, OrdinalEncoder
 from torch.utils.data import DataLoader, TensorDataset
 
 from thesis.data.features import BOOLEAN_FEATURES
@@ -47,7 +47,7 @@ class BaselineData:
     categorical_cols: list[str]
     continuous_cols: list[str]
     labels: list[str]
-    scaler: StandardScaler
+    scaler: MinMaxScaler
     ordinal_encoder: OrdinalEncoder
 
 
@@ -69,7 +69,6 @@ def add_property_aux_columns(df: pd.DataFrame) -> pd.DataFrame:
         .max()
         .rename("window_second_max_duration")
     )
-    df.drop(columns=["window_second_max_duration"], errors="ignore", inplace=True)
     df = df.merge(second_duration, on=["id.orig_h", "window_id"], how="left")
     df["window_second_max_duration"] = df["window_second_max_duration"].fillna(0.0)
     unique_max = (df["duration"] == df["window_max_duration"]) & (df["window_max_duration_count"] == 1)
@@ -156,7 +155,7 @@ def fit_baseline_data(data, config: dict, feature_cols: list[str], categorical_c
     for df in frames:
         df[continuous_cols] = df[continuous_cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
-    scaler = StandardScaler()
+    scaler = MinMaxScaler()
     train_df[feature_cols] = scaler.fit_transform(train_df[feature_cols])
     for df in frames[1:]:
         df[feature_cols] = scaler.transform(df[feature_cols])
