@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from thesis.data.features import filter_labels, make_binary_attack_df
+from thesis.data.features import filter_labels, make_binary_attack_df, recompute_portscan_window_features
 
 
 @dataclass
@@ -28,11 +28,18 @@ def prepare_labels(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     return filter_labels(df, labels)
 
 
+def prepare_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    window_seconds = config["data"].get("portscan_window_seconds")
+    if window_seconds is None:
+        return df
+    return recompute_portscan_window_features(df, float(window_seconds))
+
+
 def load_experiment_data(config: dict) -> ExperimentData:
     data_cfg = config["data"]
     random_state = config["experiment"].get("seed", 42)
 
-    full_df = prepare_labels(read_tsv(data_cfg["train_path"]), config)
+    full_df = prepare_labels(prepare_features(read_tsv(data_cfg["train_path"]), config), config)
     train_val_df, test_df = train_test_split(
         full_df,
         test_size=data_cfg.get("test_size", 0.3),
@@ -48,7 +55,7 @@ def load_experiment_data(config: dict) -> ExperimentData:
 
     cross_eval = None
     if data_cfg.get("cross_eval_path"):
-        cross_eval = prepare_labels(read_tsv(data_cfg["cross_eval_path"]), config)
+        cross_eval = prepare_labels(prepare_features(read_tsv(data_cfg["cross_eval_path"]), config), config)
 
     return ExperimentData(
         train=train_df.reset_index(drop=True),
