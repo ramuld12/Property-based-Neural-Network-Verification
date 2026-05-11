@@ -84,20 +84,27 @@ class DoSHttpFloodPostcondition(Postcondition):
         other_logits[:, self.class_idx] = -torch.inf
         max_other_logit = other_logits.max(dim=1).values
         return lambda logic: logic.OR(
+            # ValidSizes
             logic.LT(orig_bytes_per_packet, torch.full_like(orig_bytes_per_packet, self.dos_http_flood_specs["valid_packet_size_individual_min"])),
             logic.LT(orig_bytes, torch.full_like(orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
+
+            # ValidTCPHandshake
             logic.NEQ(valid_tcp, torch.ones_like(valid_tcp)),
+
+            # ValidHTTPConnection
             logic.NEQ(valid_http, torch.ones_like(valid_http)),
+
+            # ValidTomeElapsed
             logic.LT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_min"])),
             logic.GT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_max"])),
+
+            # MaliciousFloodRate
             logic.OR(
                 logic.LT(orig_byte_rate, torch.full_like(orig_byte_rate, self.dos_http_flood_specs["mal_byte_rate_min"])),
                 logic.LT(orig_pkt_rate, torch.full_like(orig_pkt_rate, self.dos_http_flood_specs["mal_pkt_rate_min"])),
             ),
 
             # DOS_HTTP_FLOOD /prediction certainty
-            # logic.GEQ(p, torch.full_like(p, self.min_prob))
-            # Otherwise, model must predict DOS_HTTP_FLOOD
             logic.GEQ(dos_logit, max_other_logit),
         )
 
