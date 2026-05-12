@@ -15,7 +15,7 @@ model:
   type: mlp
   batch_size: 1024
   learning_rate: 0.001
-  epochs: 20
+  epochs: 40
   patience: 5
   min_delta: 0.0001
 
@@ -23,7 +23,7 @@ properties:
   logic: dl2
   lambda_dos: 0.5
   lambda_scan: 0.75
-  pgd_steps: 5
+  pgd_steps: 10
   pgd_restarts: 1
   pgd_step_size: 0.01
   trainable_features: [duration, orig_bytes, resp_bytes, missed_bytes, orig_pkts, orig_ip_bytes, resp_pkts, resp_ip_bytes, orig_pkt_rate, orig_byte_rate, time_elapsed, valid_tcp_handshake, valid_http_conn, uniq_dst_ports, pkts_per_port, scan_duration, fail_ratio]
@@ -51,4 +51,4 @@ preconditions:
       upper_bound: 1.0
 
 output:
-  root: outputs/runs
+  root: outputs/3class
