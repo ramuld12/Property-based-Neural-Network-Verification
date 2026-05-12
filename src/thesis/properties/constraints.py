@@ -26,6 +26,13 @@ def raw_col(x_col, col, scaler, scale_cols):
     return x_col * (max_ - min_ + 1e-8) + min_
 
 
+def scaled_col(raw_value, col, scaler, scale_cols):
+    i = scale_cols.index(col)
+    min_ = torch.tensor(scaler.data_min_[i], device=raw_value.device, dtype=raw_value.dtype)
+    max_ = torch.tensor(scaler.data_max_[i], device=raw_value.device, dtype=raw_value.dtype)
+    return (raw_value - min_) / (max_ - min_ + 1e-8)
+
+
 def target_logits(N, x, class_idx, model_feature_count):
     logits = N(x[:, :model_feature_count])
     target_logit = logits[:, class_idx]
@@ -63,6 +70,21 @@ class FrozenFeaturePrecondition:
         return self.get_bounds(x)
 
 
+class GlobalBoundsPrecondition:
+    def __init__(self, device, lower_bound=0.0, upper_bound=1.0):
+        self.device = device
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+
+    def get_bounds(self, x):
+        lo = torch.full_like(x, self.lower_bound, device=self.device)
+        hi = torch.full_like(x, self.upper_bound, device=self.device)
+        return lo, hi
+
+    def get_precondition(self, x):
+        return self.get_bounds(x)
+
+
 class DoSHttpFloodPostcondition(Postcondition):
     def __init__(
         self,
@@ -83,13 +105,26 @@ class DoSHttpFloodPostcondition(Postcondition):
     def raw_col(self, x_col, col):
         return raw_col(x_col, col, self.scaler, self.scale_cols)
 
+    def scale_col(self, raw_value, col):
+        return scaled_col(raw_value, col, self.scaler, self.scale_cols)
+
     def rates_from_adv(self, x_adv):
         duration = self.raw_col(x_adv[:, self.idx["duration"]], "duration").clamp_min(1e-8)
-        orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts")
         orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
-        return orig_bytes / duration, orig_pkts / duration
+        orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts")
+        orig_byte_rate = orig_bytes / duration
+        orig_pkt_rate = orig_pkts / duration
+        return orig_byte_rate, orig_pkt_rate
+
+    def consistent_adv(self, x_adv):
+        x_consistent = x_adv.clone()
+        orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
+        x_consistent[:, self.idx["orig_byte_rate"]] = self.scale_col(orig_byte_rate, "orig_byte_rate")
+        x_consistent[:, self.idx["orig_pkt_rate"]] = self.scale_col(orig_pkt_rate, "orig_pkt_rate")
+        return x_consistent
 
     def get_postcondition(self, N, x, x_adv):
+        x_consistent = self.consistent_adv(x_adv)
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
@@ -98,7 +133,7 @@ class DoSHttpFloodPostcondition(Postcondition):
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
         orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
-        dos_logit, max_other_logit = target_logits(N, x_adv, self.class_idx, self.model_feature_count)
+        dos_logit, max_other_logit = target_logits(N, x_consistent, self.class_idx, self.model_feature_count)
         return lambda logic: implies(
             logic,
             [
@@ -118,6 +153,7 @@ class DoSHttpFloodPostcondition(Postcondition):
 
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
+        x_consistent = self.consistent_adv(x_adv)
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
@@ -140,13 +176,13 @@ class DoSHttpFloodPostcondition(Postcondition):
             | (orig_pkt_rate >= self.dos_http_flood_specs["mal_pkt_rate_min"])
         )
         parts = {
-            "ValidInput": valid_input_bounds(x_adv),
+            "ValidInput": valid_input_bounds(x_consistent),
             "ValidSizes": valid_sizes,
             "ValidTCPHandshake": valid_tcp == 1,
             "ValidHTTPConn": valid_http == 1,
             "TimeElapsed": time_elapsed_ok,
             "MaliciousFloodRate": malicious_flood_rate,
-            "prediction_ok": target_logit_wins(N, x_adv, self.class_idx, self.model_feature_count),
+            "prediction_ok": target_logit_wins(N, x_consistent, self.class_idx, self.model_feature_count),
         }
         parts["antecedent_true"] = (
             parts["ValidSizes"]
@@ -170,16 +206,21 @@ class PortscanPostcondition(Postcondition):
     def raw_col(self, x_col, col):
         return raw_col(x_col, col, self.scaler, self.scale_cols)
 
+    def scale_col(self, raw_value, col):
+        return scaled_col(raw_value, col, self.scaler, self.scale_cols)
+
     def round_ste(self, value):
         return value + (torch.round(value) - value).detach()
 
-    def adv_values(self, x, x_adv):
+    def consistent_adv(self, x, x_adv):
+        x_consistent = x_adv.clone()
         total_orig_pkts = self.raw_col(x[:, self.idx["total_orig_pkts"]], "total_orig_pkts")
         orig_pkts = self.raw_col(x[:, self.idx["orig_pkts"]], "orig_pkts")
         adv_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts")
-        uniq_dst_ports = self.round_ste(self.raw_col(x_adv[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports")).clamp_min(1.0)
+        uniq_dst_ports = self.round_ste(self.raw_col(x[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports")).clamp_min(1.0)
         adv_total_orig_pkts = (total_orig_pkts - orig_pkts + adv_orig_pkts).clamp_min(0.0)
         pkts_per_port = adv_total_orig_pkts / uniq_dst_ports.clamp_min(1e-8)
+
         ts = self.raw_col(x[:, self.idx["ts"]], "ts")
         window_min_ts = self.raw_col(x[:, self.idx["window_min_ts"]], "window_min_ts")
         max_flow_end_without_row = self.raw_col(
@@ -187,14 +228,26 @@ class PortscanPostcondition(Postcondition):
             "max_flow_end_without_current_row",
         )
         adv_duration = self.raw_col(x_adv[:, self.idx["duration"]], "duration")
-        adv_flow_end = ts + adv_duration
-        scan_duration = torch.maximum(adv_flow_end, max_flow_end_without_row) - window_min_ts
-        fail_ratio = self.raw_col(x_adv[:, self.idx["fail_ratio"]], "fail_ratio")
+        scan_duration = torch.maximum(ts + adv_duration, max_flow_end_without_row) - window_min_ts
+
+        x_consistent[:, self.idx["uniq_dst_ports"]] = x[:, self.idx["uniq_dst_ports"]]
+        x_consistent[:, self.idx["pkts_per_port"]] = self.scale_col(pkts_per_port, "pkts_per_port")
+        x_consistent[:, self.idx["scan_duration"]] = self.scale_col(scan_duration, "scan_duration")
+        x_consistent[:, self.idx["fail_ratio"]] = x[:, self.idx["fail_ratio"]]
+        return x_consistent
+
+    def adv_values(self, x, x_adv):
+        x_consistent = self.consistent_adv(x, x_adv)
+        uniq_dst_ports = self.round_ste(self.raw_col(x_consistent[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports")).clamp_min(1.0)
+        pkts_per_port = self.raw_col(x_consistent[:, self.idx["pkts_per_port"]], "pkts_per_port")
+        scan_duration = self.raw_col(x_consistent[:, self.idx["scan_duration"]], "scan_duration")
+        fail_ratio = self.raw_col(x_consistent[:, self.idx["fail_ratio"]], "fail_ratio")
         return uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration
 
     def get_postcondition(self, N, x, x_adv):
+        x_consistent = self.consistent_adv(x, x_adv)
         uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
-        scan_logit, max_other_logit = target_logits(N, x_adv, self.class_idx, self.model_feature_count)
+        scan_logit, max_other_logit = target_logits(N, x_consistent, self.class_idx, self.model_feature_count)
         return lambda logic: implies(
             logic,
             [
@@ -210,24 +263,27 @@ class PortscanPostcondition(Postcondition):
 
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
+        x_consistent = self.consistent_adv(x, x_adv)
         uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
         high_fail_ratio = fail_ratio >= self.portscan_specs["mal_fail_ratio_min"]
         low_pkts_per_port = pkts_per_port <= self.portscan_specs["mal_pkts_per_port_max"]
         short_scan_duration = scan_duration <= self.portscan_specs["mal_scan_duration_max"]
         parts = {
-            "ValidInput": valid_input_bounds(x_adv),
-            "MalUniqDstPorts": uniq_dst_ports >= self.portscan_specs["mal_uniq_dst_ports_min"],
-            "MalFailRatio": high_fail_ratio,
-            "MalPktsPerPort": low_pkts_per_port,
-            "MalScanDuration": short_scan_duration,
-            "prediction_ok": target_logit_wins(N, x_adv, self.class_idx, self.model_feature_count),
+            "ValidInput": valid_input_bounds(x_consistent),
+            "ManyDstPorts": uniq_dst_ports >= self.portscan_specs["mal_uniq_dst_ports_min"],
+            "HighFailRatio": high_fail_ratio,
+            "LowPktsPerPort": low_pkts_per_port,
+            "ShortScanDuration": short_scan_duration,
+            "prediction_ok": target_logit_wins(N, x_consistent, self.class_idx, self.model_feature_count),
         }
-        parts["scan_signal"] = parts["MalFailRatio"] | parts["MalPktsPerPort"] | parts["MalScanDuration"]
-        parts["antecedent_true"] = parts["MalUniqDstPorts"] & parts["scan_signal"]
+        parts["scan_signal"] = parts["HighFailRatio"] | parts["LowPktsPerPort"] | parts["ShortScanDuration"]
+        parts["antecedent_true"] = parts["ManyDstPorts"] & parts["scan_signal"]
         return parts
 
 
 def build_precondition(config: dict, device):
+    if config["name"] == "GlobalBounds" and not hasattr(pml_preconditions, "GlobalBounds"):
+        return GlobalBoundsPrecondition(device=device, **config.get("params", {}))
     cls = getattr(pml_preconditions, config["name"])
     return cls(device=device, **config.get("params", {}))
 
@@ -248,6 +304,9 @@ def build_constraints(
     frozen_feature_names=None,
 ):
     idx = {name: i for i, name in enumerate(feature_cols)}
+    unknown_features = sorted(set(frozen_feature_names or []) - set(idx))
+    if unknown_features:
+        raise ValueError(f"Unknown frozen_features: {unknown_features}")
     frozen_indices = sorted(set([idx[name] for name in (frozen_feature_names or [])] + list(range(model_feature_count, len(feature_cols)))))
     label_to_idx = {label: i for i, label in enumerate(labels)}
     dos_precondition = build_precondition(pick_precondition_config(preconditions, "dos_http_flood"), device)

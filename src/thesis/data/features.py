@@ -3,9 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-MODEL_CATEGORICAL_FEATURES = ["proto", "service", "conn_state", "history"]
+CATEGORICAL_FEATURES = ["proto", "service", "conn_state", "history"]
 
-MODEL_NUMERIC_FEATURES = [
+FLOW_NUMERIC_FEATURES = [
     "duration",
     "orig_bytes",
     "resp_bytes",
@@ -16,31 +16,49 @@ MODEL_NUMERIC_FEATURES = [
     "resp_ip_bytes",
 ]
 
-ENGINEERED_FEATURES = [
+DERIVED_FEATURES = [
+    "orig_pkt_rate",
+    "orig_byte_rate",
     "time_elapsed",
     "valid_tcp_handshake",
     "valid_http_conn",
     "uniq_dst_ports",
+    "pkts_per_port",
     "scan_duration",
     "fail_ratio",
 ]
 
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
-PROPERTY_FROZEN_FEATURES = ["valid_tcp_handshake", "valid_http_conn", "time_elapsed"]
+DEFAULT_PROPERTY_TRAINABLE_FEATURES = FLOW_NUMERIC_FEATURES + DERIVED_FEATURES
+DEFAULT_PROPERTY_FROZEN_FEATURES = [
+    "valid_tcp_handshake",
+    "valid_http_conn",
+    "time_elapsed",
+    "orig_byte_rate",
+    "orig_pkt_rate",
+    "uniq_dst_ports",
+    "pkts_per_port",
+    "scan_duration",
+    "fail_ratio",
+]
 
 PORTSCAN_FAILED_STATES = {"S0", "REJ", "RSTO", "RSTR", "RSTOS0", "RSTRH", "SH", "SHR"}
 
 
 def property_features(config: dict) -> list[str]:
-    return MODEL_NUMERIC_FEATURES + ENGINEERED_FEATURES
+    features = config.get("properties", {}).get("trainable_features", DEFAULT_PROPERTY_TRAINABLE_FEATURES)
+    available_features = set(DEFAULT_PROPERTY_TRAINABLE_FEATURES)
+    unknown_features = sorted(set(features) - available_features)
+    if unknown_features:
+        raise ValueError(f"Unknown trainable_features: {unknown_features}")
+    return features
 
 
 def baseline_features(config: dict) -> tuple[list[str], list[str], list[str]]:
-    categorical = MODEL_CATEGORICAL_FEATURES
-    numeric = MODEL_NUMERIC_FEATURES
-    engineered = ENGINEERED_FEATURES
-    return categorical + numeric + engineered, categorical, numeric + engineered
+    categorical = CATEGORICAL_FEATURES
+    continuous = FLOW_NUMERIC_FEATURES + DERIVED_FEATURES
+    return categorical + continuous, categorical, continuous
 
 
 def label_to_idx(labels: list[str]) -> dict[str, int]:

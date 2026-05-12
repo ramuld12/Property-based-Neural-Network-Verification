@@ -27,6 +27,8 @@ properties:
   pgd_steps: 10
   pgd_restarts: 1
   pgd_step_size: 0.01
+  trainable_features: [duration, orig_bytes, resp_bytes, missed_bytes, orig_pkts, orig_ip_bytes, resp_pkts, resp_ip_bytes, orig_pkt_rate, orig_byte_rate, time_elapsed, valid_tcp_handshake, valid_http_conn, uniq_dst_ports, pkts_per_port, scan_duration, fail_ratio]
+  frozen_features: [valid_tcp_handshake, valid_http_conn, time_elapsed, orig_byte_rate, orig_pkt_rate, uniq_dst_ports, pkts_per_port, scan_duration, fail_ratio]
 
 attack_specs:
   dos_http_flood:
