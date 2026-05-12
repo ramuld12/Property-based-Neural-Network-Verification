@@ -27,7 +27,6 @@ echo "Running on $(hostname)"
 echo "Working directory: $(pwd)"
 echo "Python: $(which python)"
 
-ython scripts/make_property_grid.py   --sweep configs/sweeps/property_grid_3class_dl2.yaml
 echo "Python version: $(python --version)"
 echo "Running: $COMMAND"
 eval "$COMMAND"
