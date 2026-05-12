@@ -1,0 +1,24 @@
+experiment:
+  name: baseline_binary_mlp_cicids2017_to_ciciot2023
+  method: baseline
+  task: binary
+  seed: 42
+
+data:
+  train_path: data/cicids2017_preprocessed.tsv
+  cross_eval_path: data/ciciot2023_preprocessed.tsv
+  labels: [BENIGN, ATTACK]
+  attack_source_labels: [DOS_HTTP_FLOOD, PORTSCAN]
+  test_size: 0.3
+  val_size: 0.2
+
+model:
+  type: mlp
+  batch_size: 1024
+  learning_rate: 0.001
+  epochs: 20
+  patience: 5
+  min_delta: 0.0001
+
+output:
+  root: outputs/runs/baseline
