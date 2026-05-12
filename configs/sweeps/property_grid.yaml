@@ -1,0 +1,16 @@
+base_config: configs/experiments/properties_multiclass.yaml
+method: properties
+output: configs/sweeps/property_grid.txt
+
+grid:
+  properties.logic: [dl2, goedel]
+  properties.lambda_dos: [0.25, 0.5]
+  properties.lambda_scan: [0.25, 0.75]
+  properties.pgd_steps: [5]
+  properties.pgd_step_size: [0.01]
+  preconditions.default.name: [GlobalBounds]
+  preconditions.default.params.lower_bound: [0.0]
+  preconditions.default.params.upper_bound: [1.0]
+  attack_specs.dos_http_flood.mal_byte_rate_min: [100.0, 200.0]
+  attack_specs.dos_http_flood.mal_pkt_rate_min: [3.0, 5.0]
+  attack_specs.portscan.mal_uniq_dst_ports_min: [10.0, 20.0]

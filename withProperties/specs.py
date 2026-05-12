@@ -1,21 +1,20 @@
 ATTACK_SPECS = {
     "validity": {
         "valid_packet_size_min_pkts": 1.0,
-        "valid_packet_size_min_avg_bytes": 40.0,
         "valid_packet_size_min_total_bytes": 40.0,
     },
     "dos_http_flood": {
-        "valid_duration_min": 0.00000001,
-        "valid_duration_max": 120.0,
-        "valid_iat_max_pkt_rate": 20000.0,
-        "mal_time_elapsed_max": 2.0,
-        "mal_flood_rate_min": 250.0,
+        "mal_time_elapsed_min": 0.0,
+        "mal_time_elapsed_max": 120.0,
+        "valid_pkt_size_total_min": 250,
+        "mal_byte_rate_min": 200.0,
+        "mal_pkt_rate_min": 5.0,
     },
     "portscan": {
-        "many_ports_min": 10.0,
-        "few_pkts_per_port_max": 3.0,
-        "short_scan_duration_max": 2.0,
-        "high_fail_ratio_min": 0.5,
+        "min_uniq_dst_ports": 20.0,
+        "max_pkts_per_port": 10.0,
+        "max_scan_duration": 5.0,
+        "min_fail_ratio": 0.75,
     },
     "ddos_udp_flood": {
         "max_udp_duration": 10.0,
