@@ -8,6 +8,10 @@
 #SBATCH --gres=gpu:1
 #SBATCH --array=0-35
 
+export TMPDIR=/home/username/tmp
+export TMP=/home/username/tmp
+export TEMP=/home/username/tmp
+
 set -euo pipefail
 
 SWEEP_FILE="${1:?Usage: sbatch run_array.sbatch <sweep.txt>}"
