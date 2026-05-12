@@ -17,23 +17,42 @@ MODEL_NUMERIC_FEATURES = [
 ]
 
 ENGINEERED_FEATURES = [
+    "orig_pkt_rate",
+    "orig_byte_rate",
     "time_elapsed",
     "valid_tcp_handshake",
     "valid_http_conn",
     "uniq_dst_ports",
+    "pkts_per_port",
     "scan_duration",
     "fail_ratio",
 ]
 
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
-PROPERTY_FROZEN_FEATURES = ["valid_tcp_handshake", "valid_http_conn", "time_elapsed"]
+PROPERTY_TRAINABLE_FEATURES = MODEL_NUMERIC_FEATURES + ENGINEERED_FEATURES
+PROPERTY_FROZEN_FEATURES = [
+    "valid_tcp_handshake",
+    "valid_http_conn",
+    "time_elapsed",
+    "orig_byte_rate",
+    "orig_pkt_rate",
+    "uniq_dst_ports",
+    "pkts_per_port",
+    "scan_duration",
+    "fail_ratio",
+]
 
 PORTSCAN_FAILED_STATES = {"S0", "REJ", "RSTO", "RSTR", "RSTOS0", "RSTRH", "SH", "SHR"}
 
 
 def property_features(config: dict) -> list[str]:
-    return MODEL_NUMERIC_FEATURES + ENGINEERED_FEATURES
+    features = config.get("properties", {}).get("trainable_features", PROPERTY_TRAINABLE_FEATURES)
+    available_features = set(PROPERTY_TRAINABLE_FEATURES)
+    unknown_features = sorted(set(features) - available_features)
+    if unknown_features:
+        raise ValueError(f"Unknown trainable_features: {unknown_features}")
+    return features
 
 
 def baseline_features(config: dict) -> tuple[list[str], list[str], list[str]]:
