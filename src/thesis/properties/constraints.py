@@ -222,8 +222,8 @@ class PortscanPostcondition(Postcondition):
             "MalScanDuration": short_scan_duration,
             "prediction_ok": target_logit_wins(N, x_adv, self.class_idx, self.model_feature_count),
         }
-        parts["scan_signal"] = parts["HighFailRatio"] | parts["LowPktsPerPort"] | parts["ShortScanDuration"]
-        parts["antecedent_true"] = parts["ManyDstPorts"] & parts["scan_signal"]
+        parts["scan_signal"] = parts["MalFailRatio"] | parts["MalPktsPerPort"] | parts["MalScanDuration"]
+        parts["antecedent_true"] = parts["MalUniqDstPorts"] & parts["scan_signal"]
         return parts
 
 
