@@ -14,7 +14,7 @@ data:
 
 model:
   type: random_forest
-  n_estimators: 100
+  n_estimators: 200
   n_jobs: -1
 
 output:

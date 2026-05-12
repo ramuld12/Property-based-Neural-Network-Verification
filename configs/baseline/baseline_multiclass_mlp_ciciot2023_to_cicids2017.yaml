@@ -15,7 +15,7 @@ model:
   type: mlp
   batch_size: 1024
   learning_rate: 0.001
-  epochs: 20
+  epochs: 50
   patience: 5
   min_delta: 0.0001
 

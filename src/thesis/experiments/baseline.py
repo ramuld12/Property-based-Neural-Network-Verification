@@ -76,6 +76,8 @@ def run_baseline(config: dict):
         )
         print("fitting random forest...")
         model.fit(data.x_train, data.y_train)
+        train_acc = float((model.predict(data.x_train) == data.y_train).mean())
+        print(f"train_acc={train_acc:.4f}")
         print("predicting test...")
         y_pred = model.predict(data.x_test)
         cross_pred = None

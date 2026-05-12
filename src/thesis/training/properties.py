@@ -11,6 +11,8 @@ import property_driven_ml.logics as logics
 import property_driven_ml.training as pml_training
 from sklearn.metrics import f1_score
 
+from thesis.training.torch import improved_attack_f1_or_loss
+
 
 @dataclass
 class PropertyTrainingContext:
@@ -128,17 +130,21 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
     return metrics
 
 
-def evaluate_property_model(model, loader, ctx: PropertyTrainingContext) -> tuple[dict, np.ndarray, np.ndarray]:
+def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=None) -> tuple[dict, np.ndarray, np.ndarray]:
     model.eval()
     y_true, y_pred = [], []
     totals = {"adv_dos_loss": 0.0, "adv_scan_loss": 0.0, "adv_dos_sat": 0.0, "adv_scan_sat": 0.0}
     counts = {"dos": 0, "scan": 0}
+    ce_losses = []
 
     for x, y in loader:
         x = x.to(ctx.device)
         y = y.to(ctx.device)
         with torch.no_grad():
-            preds = model(x[:, : ctx.model_feature_count]).argmax(dim=1)
+            logits = model(x[:, : ctx.model_feature_count])
+            preds = logits.argmax(dim=1)
+            if ce_fn is not None:
+                ce_losses.append(ce_fn(logits, y).item())
         y_true.extend(y.cpu().numpy())
         y_pred.extend(preds.cpu().numpy())
 
@@ -174,6 +180,8 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext) -> tupl
         "adv_dos_sat": totals["adv_dos_sat"] / max(counts["dos"], 1),
         "adv_scan_sat": totals["adv_scan_sat"] / max(counts["scan"], 1),
     }
+    if ce_fn is not None:
+        metrics["ce_loss"] = float(np.mean(ce_losses))
     return metrics, y_true, y_pred
 
 
@@ -200,15 +208,35 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
     grad_norm = pml_training.GradNorm(model, device, optimizer, lr=config["model"]["learning_rate"], alpha=1.5)
     ce_fn = make_weighted_ce_loss(data.train_df, device)
 
-    best_score = -float("inf")
+    best_attack_f1 = -float("inf")
+    best_val_loss = float("inf")
     best_state = copy.deepcopy(model.state_dict())
     best_epoch = 0
+    epochs_without_improvement = 0
     history = []
+    patience = config["model"].get("patience", 5)
+    min_delta = config["model"].get("min_delta", 1e-4)
 
     for epoch in range(1, config["model"]["epochs"] + 1):
         train_metrics = train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, data.train_loader, ctx, epoch)
-        val_metrics, _, _ = evaluate_property_model(model, data.val_loader, ctx)
+        val_metrics, _, _ = evaluate_property_model(model, data.val_loader, ctx, ce_fn=ce_fn)
         score = model_selection_score(val_metrics)
+        improved = improved_attack_f1_or_loss(
+            val_metrics["attack_macro_f1"],
+            best_attack_f1,
+            val_metrics["ce_loss"],
+            best_val_loss,
+            min_delta,
+        )
+        if improved:
+            best_attack_f1 = val_metrics["attack_macro_f1"]
+            best_val_loss = val_metrics["ce_loss"]
+            best_state = copy.deepcopy(model.state_dict())
+            best_epoch = epoch
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
         history.append({
             "epoch": epoch,
             **{f"train_{k}": v for k, v in train_metrics.items() if not k.endswith("_stats")},
@@ -223,21 +251,26 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             f"scaled_scan_loss={train_metrics['scaled_scan_loss']:.4f} " 
             f"dos_sat={train_metrics['dos_sat']:.4f} " 
             f"scan_sat={train_metrics['scan_sat']:.4f} \n " 
-            f"----- VALIDATION -----\n" f"attack_f1={val_metrics['attack_macro_f1']:.4f} " 
+            f"----- VALIDATION -----\n" f"val_ce_loss={val_metrics['ce_loss']:.4f} "
+            f"attack_f1={val_metrics['attack_macro_f1']:.4f} " 
             f"acc={val_metrics['acc']:.4f} " 
             f"adv_dos_loss={val_metrics['adv_dos_loss']:.4f} " 
             f"adv_dos_sat={val_metrics['adv_dos_sat']:.4f} " 
             f"adv_scan_loss={val_metrics['adv_scan_loss']:.4f} " 
             f"adv_scan_sat={val_metrics['adv_scan_sat']:.4f} \n" 
-            f"score={score:.4f}" 
+            f"score={score:.4f} "
+            f"patience={epochs_without_improvement}/{patience}" 
         )
         print_rule_stats("DoS HTTP Flood", train_metrics["dos_debug_stats"])
         print_rule_stats("Portscan", train_metrics["scan_debug_stats"])
 
-        if score > best_score + config["model"].get("min_delta", 1e-4):
-            best_score = score
-            best_state = copy.deepcopy(model.state_dict())
-            best_epoch = epoch
+        if epochs_without_improvement >= patience:
+            print(
+                f"early stopping at epoch={epoch} "
+                f"best_val_attack_f1={best_attack_f1:.4f} "
+                f"best_val_ce_loss={best_val_loss:.4f}"
+            )
+            break
 
     model.load_state_dict(best_state)
-    return model, pd.DataFrame(history), ctx, best_epoch, best_score
+    return model, pd.DataFrame(history), ctx, best_epoch, best_attack_f1
