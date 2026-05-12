@@ -12,8 +12,6 @@ export TMPDIR=/home/username/tmp
 export TMP=/home/username/tmp
 export TEMP=/home/username/tmp
 
-set -euo pipefail
-
 SWEEP_FILE="${1:?Usage: sbatch run_array.sbatch <sweep.txt>}"
 LINE_NUMBER=$((SLURM_ARRAY_TASK_ID + 1))
 COMMAND=$(sed -n "${LINE_NUMBER}p" "$SWEEP_FILE")
