@@ -41,6 +41,12 @@ def build_logic(name: str):
         return logics.BooleanLogic()
     elif name == "dl2":
         return logics.DL2()
+    elif name == "lukasiewicz":
+        return logics.LukasiewiczFuzzyLogic()
+    elif name == "reichenbach":
+        return logics.ReichenbachFuzzyLogic() 
+    elif name == "stl":
+        return logics.STL()
 
 
 def precondition_bounds(precondition, x):
