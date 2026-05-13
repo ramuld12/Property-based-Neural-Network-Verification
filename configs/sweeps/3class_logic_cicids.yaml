@@ -1,0 +1,6 @@
+base_config: configs/experiments/3class_logic_cicids.yaml
+method: properties
+output: configs/sweeps/3class_logic_cicids.txt
+
+grid:
+  properties.logic: [boolean, goedel, lukasiewicz, reichenbach, yager, dl2]

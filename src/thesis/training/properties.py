@@ -45,6 +45,8 @@ def build_logic(name: str):
         return logics.LukasiewiczFuzzyLogic()
     elif name == "reichenbach":
         return logics.ReichenbachFuzzyLogic() 
+    elif name == "yager":
+        return logics.YagerFuzzyLogic()
     elif name == "stl":
         return logics.STL()
 
