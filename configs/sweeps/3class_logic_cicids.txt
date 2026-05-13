@@ -1,0 +1,6 @@
+python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=boolean
+python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=goedel
+python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=lukasiewicz
+python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=reichenbach
+python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=yager
+python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=dl2

@@ -52,4 +52,4 @@ preconditions:
       upper_bound: 1.0
 
 output:
-  root: outputs/runs
+  root: outputs/binary
