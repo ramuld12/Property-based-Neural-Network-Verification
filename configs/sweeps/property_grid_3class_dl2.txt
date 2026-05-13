@@ -1,0 +1,16 @@
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0001 --set properties.pgd_step_size=0.0005
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0001 --set properties.pgd_step_size=0.001
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0001 --set properties.pgd_step_size=0.003
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0001 --set properties.pgd_step_size=0.01
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0003 --set properties.pgd_step_size=0.0005
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0003 --set properties.pgd_step_size=0.001
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0003 --set properties.pgd_step_size=0.003
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.0003 --set properties.pgd_step_size=0.01
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.001 --set properties.pgd_step_size=0.0005
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.001 --set properties.pgd_step_size=0.001
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.001 --set properties.pgd_step_size=0.003
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.001 --set properties.pgd_step_size=0.01
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.003 --set properties.pgd_step_size=0.0005
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.003 --set properties.pgd_step_size=0.001
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.003 --set properties.pgd_step_size=0.003
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set model.learning_rate=0.003 --set properties.pgd_step_size=0.01
