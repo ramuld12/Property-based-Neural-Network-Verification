@@ -1,0 +1,9 @@
+base_config: configs/experiments/properties_3class_cicids.yaml
+method: properties
+output: configs/sweeps/property_grid_3class_dl2.txt
+
+grid:
+  properties.logic: [dl2]
+  model.learning_rate: [0.0001, 0.0003, 0.001, 0.003]
+  properties.pgd_step_size: [0.0005, 0.001, 0.003, 0.01]
+  model.batch_size: [512, 1024]
