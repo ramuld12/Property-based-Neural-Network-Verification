@@ -1,0 +1,16 @@
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.25 --set properties.lambda_scan=0.25
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.25 --set properties.lambda_scan=0.5
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.25 --set properties.lambda_scan=0.75
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.25 --set properties.lambda_scan=1
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.5 --set properties.lambda_scan=0.25
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.5 --set properties.lambda_scan=0.5
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.5 --set properties.lambda_scan=0.75
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.5 --set properties.lambda_scan=1
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.75 --set properties.lambda_scan=0.25
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.75 --set properties.lambda_scan=0.5
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.75 --set properties.lambda_scan=0.75
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=0.75 --set properties.lambda_scan=1
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=1 --set properties.lambda_scan=0.25
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=1 --set properties.lambda_scan=0.5
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=1 --set properties.lambda_scan=0.75
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.lambda_dos=1 --set properties.lambda_scan=1
