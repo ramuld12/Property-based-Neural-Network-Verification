@@ -11,8 +11,6 @@ import property_driven_ml.logics as logics
 import property_driven_ml.training as pml_training
 from sklearn.metrics import f1_score
 
-from thesis.training.torch import improved_attack_f1_or_loss
-
 
 @dataclass
 class PropertyTrainingContext:
@@ -208,29 +206,22 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
     grad_norm = pml_training.GradNorm(model, device, optimizer, lr=config["model"]["learning_rate"], alpha=1.5)
     ce_fn = make_weighted_ce_loss(data.train_df, device)
 
-    best_attack_f1 = -float("inf")
-    best_val_loss = float("inf")
+    best_score = -float("inf")
     best_state = copy.deepcopy(model.state_dict())
     best_epoch = 0
     epochs_without_improvement = 0
     history = []
     patience = config["model"].get("patience", 5)
     min_delta = config["model"].get("min_delta", 1e-4)
+    min_epochs = config["model"].get("min_epochs", 1)
 
     for epoch in range(1, config["model"]["epochs"] + 1):
         train_metrics = train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, data.train_loader, ctx, epoch)
         val_metrics, _, _ = evaluate_property_model(model, data.val_loader, ctx, ce_fn=ce_fn)
         score = model_selection_score(val_metrics)
-        improved = improved_attack_f1_or_loss(
-            val_metrics["attack_macro_f1"],
-            best_attack_f1,
-            val_metrics["ce_loss"],
-            best_val_loss,
-            min_delta,
-        )
+        improved = score > best_score + min_delta
         if improved:
-            best_attack_f1 = val_metrics["attack_macro_f1"]
-            best_val_loss = val_metrics["ce_loss"]
+            best_score = score
             best_state = copy.deepcopy(model.state_dict())
             best_epoch = epoch
             epochs_without_improvement = 0
@@ -259,18 +250,19 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             f"adv_scan_loss={val_metrics['adv_scan_loss']:.4f} " 
             f"adv_scan_sat={val_metrics['adv_scan_sat']:.4f} \n" 
             f"score={score:.4f} "
+            f"best_score={best_score:.4f} "
             f"patience={epochs_without_improvement}/{patience}" 
         )
         print_rule_stats("DoS HTTP Flood", train_metrics["dos_debug_stats"])
         print_rule_stats("Portscan", train_metrics["scan_debug_stats"])
 
-        if epochs_without_improvement >= patience:
+        if epoch >= min_epochs and epochs_without_improvement >= patience:
             print(
                 f"early stopping at epoch={epoch} "
-                f"best_val_attack_f1={best_attack_f1:.4f} "
-                f"best_val_ce_loss={best_val_loss:.4f}"
+                f"best_epoch={best_epoch} "
+                f"best_score={best_score:.4f}"
             )
             break
 
     model.load_state_dict(best_state)
-    return model, pd.DataFrame(history), ctx, best_epoch, best_attack_f1
+    return model, pd.DataFrame(history), ctx, best_epoch, best_score
