@@ -1,0 +1,23 @@
+experiment:
+  name: mlp_cicids2017_to_ciciot2023
+  method: baseline
+  task: multiclass
+  seed: 42
+
+data:
+  train_path: data/cicids2017_preprocessed.tsv
+  cross_eval_path: data/ciciot2023_preprocessed.tsv
+  labels: [BENIGN, DOS_HTTP_FLOOD, PORTSCAN]
+  test_size: 0.3
+  val_size: 0.2
+
+model:
+  type: mlp
+  batch_size: 2048
+  learning_rate: 0.001
+  epochs: 40
+  patience: 10
+  min_delta: 0.00001
+
+output:
+  root: outputs/ex3/baseline/mlp_cicids2017_to_ciciot2023
