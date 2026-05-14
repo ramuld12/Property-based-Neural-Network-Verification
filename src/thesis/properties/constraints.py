@@ -128,7 +128,6 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
-        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
         raw_orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
@@ -138,9 +137,9 @@ class DoSHttpFloodPostcondition(Postcondition):
             logic,
             [
                 logic.LT(orig_bytes_per_packet, torch.full_like(orig_bytes_per_packet, self.dos_http_flood_specs["valid_packet_size_individual_min"])),
-                logic.LT(orig_bytes, torch.full_like(orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
-                logic.NEQ(valid_tcp, torch.ones_like(valid_tcp)),
-                logic.NEQ(valid_http, torch.ones_like(valid_http)),
+                logic.LT(raw_orig_bytes, torch.full_like(raw_orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
+                logic.LT(valid_tcp, torch.full_like(valid_tcp, 0.5)),
+                logic.LT(valid_http, torch.full_like(valid_http, 0.5)),
                 logic.LT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_min"])),
                 logic.GT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_max"])),
                 logic.OR(
@@ -270,14 +269,14 @@ class PortscanPostcondition(Postcondition):
         short_scan_duration = scan_duration <= self.portscan_specs["mal_scan_duration_max"]
         parts = {
             "ValidInput": valid_input_bounds(x_consistent),
-            "ManyDstPorts": uniq_dst_ports >= self.portscan_specs["mal_uniq_dst_ports_min"],
-            "HighFailRatio": high_fail_ratio,
-            "LowPktsPerPort": low_pkts_per_port,
-            "ShortScanDuration": short_scan_duration,
+            "MalDstPorts": uniq_dst_ports >= self.portscan_specs["mal_uniq_dst_ports_min"],
+            "MalFailRatio": high_fail_ratio,
+            "MalPktsPerPort": low_pkts_per_port,
+            "MalScanDuration": short_scan_duration,
             "prediction_ok": target_logit_wins(N, x_consistent, self.class_idx, self.model_feature_count),
         }
-        parts["scan_signal"] = parts["HighFailRatio"] | parts["LowPktsPerPort"] | parts["ShortScanDuration"]
-        parts["antecedent_true"] = parts["ManyDstPorts"] & parts["scan_signal"]
+        parts["scan_signal"] = parts["MalFailRatio"] | parts["MalPktsPerPort"] | parts["MalScanDuration"]
+        parts["antecedent_true"] = parts["MalDstPorts"] & parts["scan_signal"]
         return parts
 
 

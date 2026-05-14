@@ -33,4 +33,4 @@ echo "Python version: $(python --version)"
 python -c "import torch; print('CUDA:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 
 
-python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH" 
+python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH" --set properties.logic=yager --set experiment.name=3class_ciciot_yager
