@@ -1,0 +1,19 @@
+attacks:
+
+  - name: FTP_Patator
+    label: BRUTE_FORCE
+    start: "09:17:52"
+    end: "10:20:16"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: SSH_Patator
+    label: BRUTE_FORCE
+    start: "14:09:01"
+    end: "16:04:19"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50

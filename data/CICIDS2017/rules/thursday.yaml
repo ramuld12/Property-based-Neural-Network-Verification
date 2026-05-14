@@ -1,0 +1,28 @@
+attacks:
+
+  - name: Web_Attack_Brute_Force
+    label: BRUTE_FORCE
+    start: "09:19:27"
+    end: "10:00:11"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: Web_Attack_XSS
+    label: XSS
+    start: "10:15:35"
+    end: "10:35:21"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50
+
+  - name: Web_Attack_SQL_Injection
+    label: SQL_INJECTION
+    start: "10:35:45"
+    end: "10:42:55"
+    attacker_ips:
+      - 172.16.0.1
+    victim_ips:
+      - 192.168.10.50

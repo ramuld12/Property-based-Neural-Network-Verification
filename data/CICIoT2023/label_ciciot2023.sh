@@ -30,10 +30,16 @@ for pcap in "$@"; do
         label="DOS_HTTP_FLOOD"
     elif [[ "$stem" == DoS-UDP_Flood* ]]; then
         label="DOS_UDP_FLOOD"
-    elif [[ "$stem" == DDoS-UDP_Flood* ]]; then
-        label="DDOS_UDP_FLOOD"
-    elif [[ "$stem" == DDoS-SYN_Flood* ]]; then
-        label="DDOS_SYN_FLOOD"
+    elif [[ "$stem" == DoS-SYN_Flood* ]]; then
+        label="DOS_SYN_FLOOD"
+    elif [[ "$stem" == DoS-SYN_Flood* ]]; then
+        label="DOS_SYN_FLOOD"
+    elif [[ "$stem" == XSS* ]]; then
+        label="SqlInjection"
+    elif [[ "$stem" == SqlInjection* ]]; then
+        label="SQL_INJECTION"
+    elif [[ "$stem" == DictionaryBruteForce* ]]; then
+        label="BRUTE_FORCE"
     else
         label="ATTACK"
     fi
@@ -43,44 +49,44 @@ for pcap in "$@"; do
     # Skip if already processed
 
     if [ -d "$workdir" ]; then
-        echo "Skipping $fname (directory already exists)"
-        continue
+        echo "Skipping zeek-processing for $fname (directory already exists)"
+    else
+        mkdir -p "$workdir"
+
+        echo "Processing $fname -> label=$label"
+
+        (
+            cd "$workdir"
+
+            echo "  -> Running Zeek (limit: 0.2 GB conn.log)..."
+
+            setsid zeek -C -r "$pcap" &
+            zeek_pid=$!
+
+            LIMIT=$((200 * 1024 * 1024))  # 200 MiB
+
+            while kill -0 "$zeek_pid" 2>/dev/null; do
+                if [ -f conn.log ]; then
+                    size=$(stat -c%s conn.log 2>/dev/null || echo 0)
+
+                    if [ "$size" -ge "$LIMIT" ]; then
+                        echo "  -> conn.log reached 200 MiB, stopping Zeek for $fname"
+
+                        # Kill the whole process group
+                        kill -TERM -- "-$zeek_pid" 2>/dev/null || true
+                        sleep 3
+                        kill -KILL -- "-$zeek_pid" 2>/dev/null || true
+
+                        break
+                    fi
+                fi
+                sleep 1
+            done
+
+            wait "$zeek_pid" 2>/dev/null || true
+        )
     fi
 
-    mkdir -p "$workdir"
-
-    echo "Processing $fname -> label=$label"
-
-    (
-        cd "$workdir"
-
-        echo "  -> Running Zeek (limit: 0.2 GB conn.log)..."
-
-        setsid zeek -C -r "$pcap" &
-        zeek_pid=$!
-
-        LIMIT=$((200 * 1024 * 1024))  # 200 MiB
-
-        while kill -0 "$zeek_pid" 2>/dev/null; do
-            if [ -f conn.log ]; then
-                size=$(stat -c%s conn.log 2>/dev/null || echo 0)
-
-                if [ "$size" -ge "$LIMIT" ]; then
-                    echo "  -> conn.log reached 200 MiB, stopping Zeek for $fname"
-
-                    # Kill the whole process group
-                    kill -TERM -- "-$zeek_pid" 2>/dev/null || true
-                    sleep 3
-                    kill -KILL -- "-$zeek_pid" 2>/dev/null || true
-
-                    break
-                fi
-            fi
-            sleep 1
-        done
-
-        wait "$zeek_pid" 2>/dev/null || true
-    )
 
     conn="$workdir/conn.log"
 
