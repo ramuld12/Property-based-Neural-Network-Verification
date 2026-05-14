@@ -1,6 +1,5 @@
-python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=boolean
-python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=goedel
-python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=lukasiewicz
-python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=reichenbach
-python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=yager
-python -m thesis.cli run properties --config configs/experiments/3class_logic_cicids.yaml --set properties.logic=dl2
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=goedel --set experiment.name=3class_cicids_goedel
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=lukasiewicz --set experiment.name=3class_cicids_lukasiewicz
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=reichenbach --set experiment.name=3class_cicids_reichenbach
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=yager --set experiment.name=3class_cicids_yager
+python -m thesis.cli run properties --config configs/experiments/properties_3class_cicids.yaml --set properties.logic=dl2 --set experiment.name=3class_cicids_dl2

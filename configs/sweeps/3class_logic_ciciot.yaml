@@ -3,4 +3,4 @@ method: properties
 output: configs/sweeps/3class_logic_ciciot.txt
 
 grid:
-  properties.logic: [boolean, goedel, lukasiewicz, reichenbach, yager, dl2]
+  properties.logic: [goedel, lukasiewicz, reichenbach, yager, dl2]

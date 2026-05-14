@@ -14,16 +14,16 @@ data:
 
 model:
   type: mlp
-  batch_size: 1024
+  batch_size: 2048
   learning_rate: 0.001
-  epochs: 5
-  patience: 5
+  epochs: 40
+  patience: 10
   min_delta: 0.0001
 
 properties:
   logic: dl2
-  lambda_dos: 20.0
-  lambda_scan: 1.0
+  lambda_dos: 0.25
+  lambda_scan: 0.25
   pgd_steps: 10
   pgd_restarts: 1
   pgd_step_size: 0.01

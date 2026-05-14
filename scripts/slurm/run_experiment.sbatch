@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=thesis-exp
+#SBATCH --job-name=ciciot_yager
 #SBATCH --output=outputs/slurm/%x_%j.out
 #SBATCH --error=outputs/slurm/%x_%j.err
 #SBATCH --time=08:00:00
@@ -33,4 +33,4 @@ echo "Python version: $(python --version)"
 python -c "import torch; print('CUDA:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 
 
-python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH"
+python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH" 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cicids_small_grid
+#SBATCH --job-name=cicids_logics
 #SBATCH --output=outputs/slurm/%x_task-%a_job-%A.out
 #SBATCH --error=outputs/slurm/%x_task-%a_job-%A.err
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-15
+#SBATCH --array=0-6
 
 export TMPDIR=/home/username/tmp
 export TMP=/home/username/tmp
