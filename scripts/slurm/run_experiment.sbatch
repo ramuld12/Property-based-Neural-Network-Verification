@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=ciciot_yager
-#SBATCH --output=outputs/slurm/%x_%j.out
+#SBATCH --output=outputs/ex1/baseline/%x_%j.out
 #SBATCH --error=outputs/slurm/%x_%j.err
 #SBATCH --time=08:00:00
 #SBATCH --cpus-per-task=4
