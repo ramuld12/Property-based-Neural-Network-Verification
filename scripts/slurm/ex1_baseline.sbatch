@@ -13,6 +13,10 @@ export TMPDIR=/home/username/tmp
 export TMP=/home/username/tmp
 export TEMP=/home/username/tmp
 
+echo "Running on $(hostname)"
+echo "Working directory: $(pwd)"
+nvidia-smi
+
 SWEEP_FILE="configs/baseline/ex1_baseline_commands.txt"
 LINE_NUMBER=$((SLURM_ARRAY_TASK_ID + 1))
 COMMAND=$(grep -v '^[[:space:]]*$' "$SWEEP_FILE" | sed -n "${LINE_NUMBER}p")
