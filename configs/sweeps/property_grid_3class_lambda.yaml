@@ -1,7 +1,0 @@
-base_config: configs/experiments/properties_3class_cicids.yaml
-method: properties
-output: configs/sweeps/property_grid_3class_lambda.txt
-
-grid:
-  properties.lambda_dos: [0.25, 0.5, 0.75, 1]
-  properties.lambda_scan: [0.25, 0.5, 0.75, 1]

@@ -79,47 +79,6 @@ preconditions:
 
 Precondition names are resolved from `property_driven_ml.constraints.preconditions`.
 
-## Generate a property grid
-
-Edit `configs/sweeps/property_grid.yaml`, then generate the command file:
-
-```bash
-python scripts/make_property_grid.py --sweep configs/sweeps/property_grid.yaml
-```
-
-This writes one command per parameter combination to `configs/sweeps/property_grid.txt`.
-
-## Run on SLURM
-
-Single experiment:
-
-```bash
-sbatch scripts/slurm/run_experiment.sbatch configs/experiments/properties_multiclass.yaml properties
-```
-
-Sweep:
-
-```bash
-sbatch scripts/slurm/run_array.sbatch configs/sweeps/property_grid.txt
-```
-
-Each run saves its config, model, metrics, classification reports, confusion matrices, and training history under `outputs/runs/`.
-
-## Final experiment matrix
-
-The main thesis comparison uses engineered features only:
-
-- Random forest baseline
-- MLP baseline
-- Property-trained MLP
-
-The final run list is in:
-
-```bash
-configs/sweeps/final_experiments.txt
-```
-
-It covers binary property-attacks-only, binary all-attacks, and 3-class concrete attack classification.
 
 # Generate dataset from PCAP files
 ## CICIDS2017 and CICDDOS2019

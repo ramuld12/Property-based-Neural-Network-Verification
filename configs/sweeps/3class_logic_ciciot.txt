@@ -1,5 +1,0 @@
-python -m thesis.cli run properties --config configs/experiments/properties_3class_ciciot.yaml --set properties.logic=goedel --set experiment.name=3class_ciciot_goedel
-python -m thesis.cli run properties --config configs/experiments/properties_3class_ciciot.yaml --set properties.logic=lukasiewicz --set experiment.name=3class_ciciot_lukasiewicz
-python -m thesis.cli run properties --config configs/experiments/properties_3class_ciciot.yaml --set properties.logic=reichenbach --set experiment.name=3class_ciciot_reichenbach
-python -m thesis.cli run properties --config configs/experiments/properties_3class_ciciot.yaml --set properties.logic=yager --set experiment.name=3class_ciciot_yager
-python -m thesis.cli run properties --config configs/experiments/properties_3class_ciciot.yaml --set properties.logic=dl2 --set experiment.name=3class_ciciot_dl2
