@@ -1,5 +1,5 @@
 experiment:
-  name: baseline_multiclass_mlp_ciciot2023_to_cicids2017
+  name: rf_ciciot2023_to_cicids2017
   method: baseline
   task: multiclass
   seed: 42
@@ -12,12 +12,9 @@ data:
   val_size: 0.2
 
 model:
-  type: mlp
-  batch_size: 2048
-  learning_rate: 0.001
-  epochs: 50
-  patience: 5
-  min_delta: 0.0001
+  type: random_forest
+  n_estimators: 200
+  n_jobs: -1
 
 output:
-  root: outputs/runs/baseline
+  root: outputs/ex3/baseline/rf_ciciot2023_to_cicids2017

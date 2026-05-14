@@ -1,14 +1,13 @@
 experiment:
-  name: baseline_binary_rf_cicids2017_to_ciciot2023
+  name: rf_cicids2017_to_ciciot2023
   method: baseline
-  task: binary
+  task: multiclass
   seed: 42
 
 data:
   train_path: data/cicids2017_preprocessed.tsv
   cross_eval_path: data/ciciot2023_preprocessed.tsv
-  labels: [BENIGN, ATTACK]
-  attack_source_labels: [DOS_HTTP_FLOOD, PORTSCAN]
+  labels: [BENIGN, DOS_HTTP_FLOOD, PORTSCAN]
   test_size: 0.3
   val_size: 0.2
 
@@ -18,4 +17,4 @@ model:
   n_jobs: -1
 
 output:
-  root: outputs/runs/baseline
+  root: outputs/ex3/baseline/rf_cicids2017_to_ciciot2023
