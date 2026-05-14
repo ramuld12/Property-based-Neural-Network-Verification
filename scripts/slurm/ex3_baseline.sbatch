@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=ex3_baseline
-#SBATCH --output=outputs/slurm/%x_task-%a_job-%A.out
-#SBATCH --error=outputs/slurm/%x_task-%a_job-%A.err
+#SBATCH --output=outputs/ex3/baseline/slurm/%x_task-%a_job-%A.out
+#SBATCH --error=outputs/ex3/baseline/slurm/%x_task-%a_job-%A.err
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
 #SBATCH --array=0-39
-
-set -euo pipefail
 
 export TMPDIR=/home/username/tmp
 export TMP=/home/username/tmp
@@ -24,8 +22,6 @@ if [[ -z "${COMMAND}" ]]; then
 fi
 
 ENV_NAME="thesis"
-
-mkdir -p outputs/slurm "$TMPDIR"
 
 module load Anaconda3
 eval "$(conda shell.bash hook)"
