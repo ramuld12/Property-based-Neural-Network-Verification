@@ -32,10 +32,8 @@ for pcap in "$@"; do
         label="DOS_UDP_FLOOD"
     elif [[ "$stem" == DoS-SYN_Flood* ]]; then
         label="DOS_SYN_FLOOD"
-    elif [[ "$stem" == DoS-SYN_Flood* ]]; then
-        label="DOS_SYN_FLOOD"
     elif [[ "$stem" == XSS* ]]; then
-        label="SqlInjection"
+        label="XSS"
     elif [[ "$stem" == SqlInjection* ]]; then
         label="SQL_INJECTION"
     elif [[ "$stem" == DictionaryBruteForce* ]]; then

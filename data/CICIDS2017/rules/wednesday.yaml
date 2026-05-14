@@ -11,8 +11,8 @@ attacks:
 
   - name: DoS_Slowhttptest
     label: DOS_SLOWHTTPTEST
-    start: "10:14:00"
-    end: "10:35:00"
+    start: "10:15:37"
+    end: "10:37:49"
     attacker_ips:
       - 172.16.0.1
     victim_ips:
