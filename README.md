@@ -1,113 +1,152 @@
-
 # Thesis experiments
 
-This project uses preprocessed TSV files in `data/` as experiment inputs. The Zeek/PCAP-to-TSV pipeline is documented below and is not required when running model experiments.
+This repository runs baseline and property-driven intrusion-detection experiments from preprocessed TSV files. The model pipeline starts from the files in `data/*_preprocessed.tsv`; regenerating those TSVs from PCAPs is optional and documented at the end.
 
 ## Project structure
 
-- `src/thesis/`: reusable experiment code
-  - `data/`: loading, label filtering, feature definitions, preprocessing
-  - `models/`: MLP and CNN-LSTM model definitions
-  - `properties/`: DL2 property constraints and attack specifications
-  - `training/`: baseline and property-training loops
-  - `results/`: metrics and plotting helpers
-  - `experiments/`: end-to-end baseline and property runners
-- `configs/experiments/`: YAML configs for baseline and property experiments
-- `scripts/slurm/`: scripts for running experiments on a SLURM cluster
-- `outputs/runs/`: generated models, metrics, plots, configs, and histories
+- `src/thesis/`: experiment code for data loading, preprocessing, training, evaluation, and plotting.
+- `configs/baseline/`: baseline model configs plus reproducibility command grids.
+- `configs/properties/`: property-driven model configs plus reproducibility command grids.
+- `data/*_preprocessed.tsv`: required experiment inputs.
+- `outputs/`: generated run directories, models, metrics, plots, and saved configs.
 
 ## Setup
+
+Install PyTorch first using the CUDA or CPU wheel appropriate for the machine, then install the remaining dependencies and the local package:
 
 ```bash
 pip install -r requirements.txt
 pip install -e .
 ```
 
-## Run a property experiment
+The project expects these preprocessed input files to exist:
 
-```bash
-python -m thesis.cli run properties --config configs/experiments/properties_multiclass.yaml
+```text
+data/cicids2017_preprocessed.tsv
+data/ciciot2023_preprocessed.tsv
 ```
 
-## Run a baseline experiment
+Small versions are also present for quick checks, but the experiment command grids use the full TSV files.
+To generate the datasets, view the section about it below.
+
+## Run one experiment
+
+Run a single baseline experiment:
 
 ```bash
-python -m thesis.cli run baseline --config configs/experiments/baseline_multiclass.yaml
+python -m thesis.cli run baseline --config configs/baseline/ex1_mlp.yaml
 ```
 
-## Override config values
+Run a single property-driven experiment:
+
+```bash
+python -m thesis.cli run properties --config configs/properties/ex1_prop_mlp.yaml
+```
+
+Any config value can be overridden from the command line with `--set key.path=value`:
 
 ```bash
 python -m thesis.cli run properties \
-  --config configs/experiments/properties_multiclass.yaml \
-  --set properties.logic=dl2 \
-  --set model.epochs=5 \
-  --set properties.lambda_dos=0.5 \
-  --set properties.lambda_scan=0.75 \
-  --set attack_specs.portscan.min_uniq_dst_ports=20
+  --config configs/properties/ex1_prop_mlp.yaml \
+  --set experiment.name=run1 \
+  --set experiment.seed=1 \
+  --set output.root=outputs/ex1/properties/dl2/mlp_cicids2017_to_ciciot2023 \
+  --set data.train_path=data/cicids2017_preprocessed.tsv \
+  --set data.cross_eval_path=data/ciciot2023_preprocessed.tsv \
+  --set properties.logic=dl2
 ```
 
-Property logic and attack thresholds are defined in the property experiment configs. Edit the `properties.logic` field to switch logic, and edit `attack_specs` to change the rule thresholds used by the property constraints.
+## Experiment definitions
 
-The property model does not use `orig_byte_rate`, `orig_pkt_rate`, or `pkts_per_port` as input features. The DoS rule still supports `mal_byte_rate_min` and `mal_pkt_rate_min`, and the Portscan rule still supports `max_pkts_per_port`; these values are calculated during property evaluation from adversarial packet/byte fields and window context instead of being perturbed directly by PGD.
+- `ex1`: binary `BENIGN` vs `ATTACK`, where `ATTACK` contains `DOS_HTTP_FLOOD` and `PORTSCAN`.
+- `ex2`: binary `BENIGN` vs `ATTACK`, where `ATTACK` contains `XSS`, `SQL_INJECTION`, and `BRUTE_FORCE`.
+- `ex3`: three-class classification with `BENIGN`, `DOS_HTTP_FLOOD`, and `PORTSCAN`.
+- `ex4`: mixed specific/generic classification with `BENIGN`, `DOS_HTTP_FLOOD`, `PORTSCAN`, and generic `ATTACK`.
 
-Immutable context fields can be frozen during PGD:
+Baseline configs exist for random forest and MLP models. Property configs currently use the MLP model with property constraints for DoS HTTP flood and portscan behavior.
 
-```yaml
-properties:
-  frozen_features:
-    - valid_tcp_handshake
-    - valid_http_conn
-    - time_elapsed
+## Recreate results
+
+The reproducibility command grids contain the full experiment sweeps with explicit seeds, train/cross-evaluation directions, and output roots.
+
+Baseline grids:
+
+```text
+configs/baseline/ex1_baseline_commands.txt
+configs/baseline/ex2_baseline_commands.txt
+configs/baseline/ex3_baseline_commands.txt
+configs/baseline/ex4_baseline_commands.txt
 ```
 
-Property preconditions are also config-driven:
+Each baseline grid contains 40 commands: random forest and MLP, two train/cross-evaluation directions, and 10 seeds per setting.
 
-```yaml
-preconditions:
-  default:
-    name: GlobalBounds
-    params:
-      lower_bound: 0.0
-      upper_bound: 1.0
+Property grids:
 
-  portscan:
-    name: EpsilonBall
-    params:
-      epsilon: 0.05
+```text
+configs/properties/ex1_prop_commands.txt
+configs/properties/ex2_prop_commands.txt
+configs/properties/ex3_prop_commands.txt
+configs/properties/ex4_prop_commands.txt
 ```
 
-Precondition names are resolved from `property_driven_ml.constraints.preconditions`.
+Each property grid contains 30 commands: five logics, two train/cross-evaluation directions, and three seeds per setting.
 
 
-# Generate dataset from PCAP files
-## CICIDS2017
+To recreate all baseline results, run the four baseline command grids. To recreate all property-driven results, run the four property command grids. These runs can take a long time because each command trains a model and writes a separate timestamped output directory.
 
-To generate the tsv dataset from the PCAP files, run the following command in the zeek_logs folder for each day (e.g. zeek_logs_friday. Makes sure to create them first):
+## Outputs
+
+Each run writes to:
+
+```text
+<output.root>/<timestamp>_<experiment.name>/
+```
+
+The saved run directory includes:
+
+- `config.yaml`: the effective config after command-line overrides.
+- `model.joblib`: trained model and preprocessing artifacts.
+- `metrics.json`: run-level metric summary.
+- `test/metrics.json`: test metrics.
+- `test/classification_report.csv`: per-class precision, recall, F1, support, and per-label accuracy.
+- `test/confusion_matrix.csv`: test confusion matrix.
+- `test/confusion_matrix.png`: plotted evaluation summary.
+- `cross_eval/`: equivalent outputs for the cross-dataset evaluation when `data.cross_eval_path` is configured.
+- `training_history.csv`: epoch history for MLP and property-driven runs.
+
+## Regenerate preprocessed TSVs
+
+The generate the preprocessed datasets the process differs a bit for each one:
+
+### CICIDS2017
+
+Create Zeek logs for each PCAP/day, for example:
 
 ```bash
-zeek -C -r ./../pcaps/Wednesday-workingHours.pcap 
+zeek -C -r ./../pcaps/Wednesday-workingHours.pcap
 ```
-Afterward convert it to a tsv file using the following commands:
+
+Convert the Zeek connection log to TSV:
+
 ```bash
 zeek-cut -m < conn.log >> conn.tsv
 ```
-Then all that is left is to run all cells in the [`labelling`](data/CICIDS2017/label_cicids2017.ipynb) Jupyter Notebook file
 
-## CICIoT2023
-First download the pcap files from [CIC](https://www.unb.ca//cic/datasets/iotdataset-2023.html).
-Then run the script provided[process_pcaps.sh](data/CICIoT2023/process_pcaps.sh) pointing to individual pcaps or all files ending with .pcap:
+Then run the labeling notebook at `data/CICIDS2017/label_cicids2017.ipynb`.
+
+### CICIoT2023
+
+Download the CICIoT2023 PCAP files from CIC, then run the processing script in `data/CICIoT2023/` against one or more PCAP files:
 
 ```bash
-./label_ciciot2023.sh pcaps/file1.pcap pcaps/file2.pcap
-./label_ciciot2023.sh pcaps/*.pcap
+./process_pcaps.sh pcaps/file1.pcap pcaps/file2.pcap
+./process_pcaps.sh pcaps/*.pcap
 ```
 
-Make sure to make it executable at first by running
+If needed, make the script executable first:
+
 ```bash
-chmod -X process_pcaps.sh
+chmod +x process_pcaps.sh
 ```
 
-This processes the pcaps individually using zeek, making the zeek-logs. We are specifically interested in the conn.log and dhcp.log (since we need to map mac-adresses to IP). 
-
-Next step is then to run the cells in the [`labelling`](data/CICIoT2023/label_ciciot2023.ipynb) Jupyter Notebook file. 
+Then run the labeling notebook at `data/CICIoT2023/label_ciciot2023.ipynb`.
