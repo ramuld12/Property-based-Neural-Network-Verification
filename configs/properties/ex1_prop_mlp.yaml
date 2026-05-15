@@ -1,12 +1,12 @@
 experiment:
-  name: properties_binary_ciciot2023_to_cicids2017
+  name: properties_multiclass_cicids2017_to_ciciot2023
   method: properties
   task: binary
   seed: 42
 
 data:
-  train_path: data/ciciot2023_preprocessed.tsv
-  cross_eval_path: data/cicids2017_preprocessed.tsv
+  train_path: data/cicids2017_preprocessed.tsv
+  cross_eval_path: data/ciciot2023_preprocessed.tsv
   labels: [BENIGN, ATTACK]
   attack_source_labels: [DOS_HTTP_FLOOD, PORTSCAN]
   test_size: 0.3
@@ -18,12 +18,13 @@ model:
   learning_rate: 0.001
   epochs: 40
   patience: 10
-  min_delta: 0.0001
+  min_epochs: 10
+  min_delta: 0.00001
 
 properties:
   logic: dl2
-  lambda_dos: 0.25
-  lambda_scan: 0.25
+  lambda_dos: 0.5
+  lambda_scan: 0.5
   pgd_steps: 10
   pgd_restarts: 1
   pgd_step_size: 0.01
@@ -33,9 +34,9 @@ properties:
 attack_specs:
   dos_http_flood:
     valid_packet_size_individual_min: 40.0
+    valid_pkt_size_total_min: 250
     mal_time_elapsed_min: 0.0
     mal_time_elapsed_max: 120.0
-    valid_pkt_size_total_min: 250
     mal_byte_rate_min: 200.0
     mal_pkt_rate_min: 5.0
   portscan:
@@ -52,4 +53,4 @@ preconditions:
       upper_bound: 1.0
 
 output:
-  root: outputs/binary
+  root: outputs/3class
