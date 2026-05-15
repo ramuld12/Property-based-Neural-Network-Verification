@@ -95,15 +95,19 @@ zeek-cut -m < conn.log >> conn.tsv
 Then all that is left is to run all cells in the [`labelling`](data/CICIDS2017/label_cicids2017.ipynb) Jupyter Notebook file
 
 ## CICIoT2023
-Since we have more direct naming from filenames, here we just need to run the script provided in [label_ciciot2023.sh](data/CICIoT2023/label_ciciot2023.sh).
-
-Make sure to make it executable at first by running
-```bash
-chmod -X label_ciciot2023.sh
-```
-Then run it pointing to individual pcaps or all files ending with .pcap:
+First download the pcap files from [CIC](https://www.unb.ca//cic/datasets/iotdataset-2023.html).
+Then run the script provided[process_pcaps.sh](data/CICIoT2023/process_pcaps.sh) pointing to individual pcaps or all files ending with .pcap:
 
 ```bash
 ./label_ciciot2023.sh pcaps/file1.pcap pcaps/file2.pcap
 ./label_ciciot2023.sh pcaps/*.pcap
 ```
+
+Make sure to make it executable at first by running
+```bash
+chmod -X process_pcaps.sh
+```
+
+This processes the pcaps individually using zeek, making the zeek-logs. We are specifically interested in the conn.log and dhcp.log (since we need to map mac-adresses to IP). 
+
+Next step is then to run the cells in the [`labelling`](data/CICIoT2023/label_ciciot2023.ipynb) Jupyter Notebook file. 

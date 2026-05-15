@@ -1,0 +1,200 @@
+BenignTraffic:
+  label: BENIGN
+  victim_macs: []
+  known_ips: []
+
+DictionaryBruteForce:
+  label: BRUTE_FORCE
+  victim_macs:
+    - 44:01:BB:EC:10:4A  # HeimVision Smart WiFi Camera 192.168.137.90
+    - 7C:A7:B0:CD:18:32  # Luohe Cam Dog
+    - DC:A6:32:C9:E6:F4  # RaspberryPi (DC:A6:32:C9:E6:F4) 192.168.137.131
+    - DC:A6:32:C9:E4:C6  # RaspberryPi (DC:A6:32:C9:E4:C6) 192.168.137.71
+    - DC:A6:32:C9:E5:02  # RaspberryPi (DC:A6:32:C9:E5:02) 192.168.137.141
+  known_ips: 
+    - 192.168.137.90
+    - 192.168.137.131
+    - 192.168.137.71
+    - 192.168.137.141
+
+DoS-HTTP_Flood:
+  label: DOS_HTTP_FLOOD
+  victim_macs:
+    - 2C:71:FF:05:F1:15  # Amazon Echo Show 192.168.137.254
+    - 9C:8E:CD:1D:AB:9F  # AMCREST WiFi Camera 192.168.137.235
+    - B0:C5:54:59:2E:99  # DCS8000LHA1 D-Link Mini Camera
+    - B0:F1:EC:D3:E7:98  # harman kardon (Ampak Technology) 192.168.137.174
+    - 70:EE:50:68:0E:32  # Netatmo Camera 192.168.137.64
+    - 00:17:88:60:D6:4F  # Philips Hue Bridge
+    - DC:A6:32:C9:E6:F4  # RaspberryPi (DC:A6:32:C9:E6:F4) 192.168.137.131
+    - DC:A6:32:C9:E4:C6  # RaspberryPi (DC:A6:32:C9:E4:C6) 192.168.137.71
+    - DC:A6:32:C9:E5:02  # RaspberryPi (DC:A6:32:C9:E5:02) 192.168.137.141
+    - 6C:5A:B0:44:1D:90  # TP-Link Tapo Camera
+  known_ips: 
+    - 192.168.137.254
+    - 192.168.137.235
+    - 192.168.137.174
+    - 192.168.137.64
+    - 192.168.137.131
+    - 192.168.137.71
+    - 192.168.137.141
+
+DoS-HTTP_Flood1:
+  label: DOS_HTTP_FLOOD
+  victim_macs:
+    - 2C:71:FF:05:F1:15  # Amazon Echo Show 192.168.137.254
+    - 9C:8E:CD:1D:AB:9F  # AMCREST WiFi Camera 192.168.137.235
+    - B0:C5:54:59:2E:99  # DCS8000LHA1 D-Link Mini Camera
+    - B0:F1:EC:D3:E7:98  # harman kardon (Ampak Technology) 192.168.137.174
+    - 70:EE:50:68:0E:32  # Netatmo Camera 192.168.137.64
+    - 00:17:88:60:D6:4F  # Philips Hue Bridge
+    - DC:A6:32:C9:E6:F4  # RaspberryPi (DC:A6:32:C9:E6:F4) 192.168.137.131
+    - DC:A6:32:C9:E4:C6  # RaspberryPi (DC:A6:32:C9:E4:C6) 192.168.137.71
+    - DC:A6:32:C9:E5:02  # RaspberryPi (DC:A6:32:C9:E5:02) 192.168.137.141
+    - 6C:5A:B0:44:1D:90  # TP-Link Tapo Camera
+  known_ips: 
+    - 192.168.137.254
+    - 192.168.137.235
+    - 192.168.137.174
+    - 192.168.137.64
+    - 192.168.137.131
+    - 192.168.137.71
+    - 192.168.137.141
+
+
+Recon-PortScan:
+  label: PORTSCAN
+  victim_macs:
+    - 28:6D:97:9E:F4:D5  # AeoTec Smart Home Hub
+    - 1C:FE:2B:98:16:DD  # Amazon Alexa Echo Dot 1 
+    - A0:D0:DC:C4:08:FF  # Amazon Alexa Echo Dot 2
+    - 2C:71:FF:05:F1:15  # Amazon Echo Show 
+    - 1C:12:B0:9B:0C:EC  # Amazon Alexa Echo Spot 
+    - 08:7C:39:CE:6E:2A  # Amazon Alexa Echo Studio
+    - B8:5F:98:D0:76:E6  # Amazon Plug
+    - 9C:8E:CD:1D:AB:9F  # AMCREST WiFi Camera
+    - 3C:37:86:6F:B9:51  # Arlo Base Station
+    - 40:5D:82:35:14:C8  # Arlo Q Indoor Camera
+    - 68:57:2d:56:ac:47  # Atomi Coffee Maker
+    - c0:e7:bf:0a:79:d1  # Borun/Sichuan-AI Camera
+    - 08:3a:f2:1f:bc:68  # Cocoon Smart HVAC Fan
+    - b0:c5:54:59:2e:99  # DCS8000LHA1 D-Link Mini Camera
+    - 8c:85:80:6c:b6:47  # Eufy HomeBase2
+    - ac:17:02:05:34:27  # Fibaro Home Center Lite
+    - 50:02:91:b1:68:0c  # Globe Lamp ESP_B1680C
+    - 44:bb:3b:00:39:07  # Nest Indoor Camera
+    - cc:f4:11:9c:d0:00  # Google Nest Mini Speaker
+    - c4:dd:57:13:07:c6  # GoSund Bulb
+    - 50:02:91:1a:ce:e1  # Gosund Power strip (1)
+    - b8:f0:09:03:9a:af  # GoSund Power strip (2)9
+    - b8:f0:09:03:29:79  # GoSound Smart plug WP2 (1)
+    - 50:02:91:10:ac:d8  # GoSound Smart Plug WP2 (2)
+    - 50:02:91:10:09:8f  # GoSund Smart plug WP2 (3)
+    - c4:dd:57:0c:39:94  # GoSund Smart Plug WP3 (1)
+    - 24:a1:60:14:7f:f9  # Gosund Smart Plug WP3 (2)
+    - d4:ad:fc:29:c8:a2  # Govee Smart Humidifier
+    - b0:f1:ec:d3:e7:98  # harman kardon (Ampak Technology)
+    - 44:01:bb:ec:10:4a  # HeimVision Smart WiFi Camera
+    - d4:a6:51:30:64:b7  # HeimVision SmartLife Radio/Lamp
+    - 34:75:63:73:f3:36  # Home Eye Camera
+    - 50:14:79:37:80:18  # iRobot Roomba
+    - f4:cf:a2:34:48:6b  # LampUX RGB
+    - 1c:9d:c2:8c:9a:94  # Levoit Air Purifier
+    - ac:f1:08:4e:00:82  # LG Smart TV
+    - d0:73:d5:35:fb:c8  # LIFX Lightbulb
+    - 84:e3:42:42:ed:0b  # Lumiman bulb
+    - 70:ee:50:68:0e:32  # Netatmo Camera 192.168.137.64
+    - 70:ee:50:6b:a8:1a  # Netatmo Weather Station
+    - 00:17:88:60:d6:4f  # Philips Hue Bridge
+    - 10:5a:17:97:a5:c6  # Rbcior Camera
+    - b0:09:da:3e:82:6c  # Ring Base Station
+    - 00:02:75:f6:e3:cb  # Smart Board
+    - 28:6d:97:7a:2b:2d  # SmartThings Hub
+    - 48:a6:b8:f9:1b:88  # Sonos One Speaker
+    - 6c:5a:b0:44:1d:90  # TP-Link Tapo Camera
+    - 18:69:d8:eb:d4:3e  # Teckin Light Strip
+    - d4:a6:51:76:06:64  # Teckin Plug 1
+    - d4:a6:51:78:97:4e  # Teckin Plug 2
+    - 30:23:03:f3:84:2b  # Wemo smart plug 1
+    - 30:23:03:f3:57:cb  # Wemo smart plug 2
+    - 7c:78:b2:86:0d:81  # Wyze Camera
+    - 84:7a:b6:62:3a:6c  # Yi Indoor 2 Camera
+    - 84:7a:b6:64:62:58  # Yi Indoor Camera
+    - 2c:d2:6b:66:d2:87  # Yi Outdoor Camera
+    - d4:a6:51:20:91:d1  # Yutron Plug 1
+    - d4:a6:51:21:6c:29  # Yutron Plug 2
+  known_ips:
+    - 192.168.137.3      # Levoit Air Purifier
+    - 192.168.137.6      # TP-Link Tapo Camera
+    - 192.168.137.7      # Yi Outdoor Camera
+    - 192.168.137.14     # AeoTec Smart Home Hub
+    - 192.168.137.15     # Gosund Smart Plug WP3 (2)
+    - 192.168.137.23     # Rbcior Camera
+    - 192.168.137.24     # GoSound Smart plug WP2 (1)
+    - 192.168.137.26     # Smart Board
+    - 192.168.137.29     # Yutron Plug 2
+    - 192.168.137.41     # Cocoon Smart HVAC Fan
+    - 192.168.137.42     # Nest Indoor Camera
+    - 192.168.137.58     # GoSund Smart plug WP2 (3)
+    - 192.168.137.64     # Netatmo Camera
+    - 192.168.137.70     # GoSound Smart Plug WP2 (2)
+    - 192.168.137.77     # Wyze Camera
+    - 192.168.137.82     # Yi Indoor Camera
+    - 192.168.137.100    # Wemo smart plug 2
+    - 192.168.137.110    # Atomi Coffee Maker
+    - 192.168.137.115    # iRobot Roomba
+    - 192.168.137.116    # Globe Lamp ESP_B1680C
+    - 192.168.137.134    # Teckin Light Strip
+    - 192.168.137.144    # Wemo smart plug 1
+    - 192.168.137.145    # LIFX Lightbulb
+    - 192.168.137.148    # Yi Indoor 2 Camera
+    - 192.168.137.154    # Gosund Power strip (1)
+    - 192.168.137.156    # Teckin Plug 1
+    - 192.168.137.160    # Amazon Alexa Echo Spot
+    - 192.168.137.163    # Borun/Sichuan-AI Camera
+    - 192.168.137.164    # Teckin Plug 2
+    - 192.168.137.165    # SmartThings Hub
+    - 192.168.137.171    # Ring Base Station
+    - 192.168.137.174    # harman kardon
+    - 192.168.137.179    # Amazon Plug
+    - 192.168.137.191    # Amazon Alexa Echo Dot 1
+    - 192.168.137.197    # Govee Smart Humidifier
+    - 192.168.137.216    # LampUX RGB
+    - 192.168.137.219    # GoSund Power strip (2)
+    - 192.168.137.222    # Amazon Alexa Echo Studio
+    - 192.168.137.224    # Lumiman bulb
+    - 192.168.137.235    # AMCREST WiFi Camera
+    - 192.168.137.236    # GoSund Bulb
+    - 192.168.137.239    # HeimVision SmartLife Radio/Lamp
+    - 192.168.137.244    # Google Nest Mini Speaker
+    - 192.168.137.247    # Yutron Plug 1
+    - 192.168.137.250    # GoSund Smart Plug WP3 (1)
+    - 192.168.137.254    # Amazon Echo Show
+    - 192.168.137.90     # 44:01:bb:ec:10:4a 
+    - 192.168.137.131    # dc:a6:32:c9:e6:f4
+    - 192.168.137.71     # dc:a6:32:c9:e4:c6
+    - 192.168.137.141    # dc:a6:32:c9:e5:02 
+
+SqlInjection:
+  label: SQL_INJECTION
+  victim_macs:
+    - DC:A6:32:C9:E6:F4  # RaspberryPi (DC:A6:32:C9:E6:F4) 192.168.137.131
+    - DC:A6:32:C9:E4:C6  # RaspberryPi (DC:A6:32:C9:E4:C6) 192.168.137.71
+    - DC:A6:32:C9:E5:02  # RaspberryPi (DC:A6:32:C9:E5:02) 192.168.137.141
+  known_ips: 
+    - 192.168.137.131
+    - 192.168.137.71
+    - 192.168.137.141
+
+XSS:
+  label: XSS
+  victim_macs:
+    - DC:A6:32:C9:E6:F4  # RaspberryPi (DC:A6:32:C9:E6:F4) 192.168.137.131
+    - DC:A6:32:C9:E4:C6  # RaspberryPi (DC:A6:32:C9:E4:C6) 192.168.137.71
+    - DC:A6:32:C9:E5:02  # RaspberryPi (DC:A6:32:C9:E5:02) 192.168.137.141
+  known_ips: 
+    - 192.168.137.131
+    - 192.168.137.71
+    - 192.168.137.141
+
+
