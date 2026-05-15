@@ -2,7 +2,7 @@
 #SBATCH --job-name=ex1_baseline
 #SBATCH --output=outputs/ex1/baseline/slurm/%x_task-%a_job-%A.out
 #SBATCH --error=outputs/ex1/baseline/slurm/%x_task-%a_job-%A.err
-#SBATCH --time=24:00:00
+#SBATCH --time=08:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
