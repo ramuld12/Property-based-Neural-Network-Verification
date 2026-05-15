@@ -16,7 +16,7 @@ FLOW_NUMERIC_FEATURES = [
     "resp_ip_bytes",
 ]
 
-DERIVED_FEATURES = [
+ENGINEERED_FEATURES = [
     "orig_pkt_rate",
     "orig_byte_rate",
     "time_elapsed",
@@ -30,7 +30,17 @@ DERIVED_FEATURES = [
 
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
-DEFAULT_PROPERTY_TRAINABLE_FEATURES = FLOW_NUMERIC_FEATURES + DERIVED_FEATURES
+LEAKAGE_PRONE_ENGINEERED_FEATURES = [
+    "time_elapsed",
+    "window_id",
+    "is_failed_conn",
+    "uniq_dst_ports",
+    "pkts_per_port",
+    "scan_duration",
+    "fail_ratio",
+]
+
+DEFAULT_PROPERTY_TRAINABLE_FEATURES = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
 DEFAULT_PROPERTY_FROZEN_FEATURES = [
     "valid_tcp_handshake",
     "valid_http_conn",
@@ -57,7 +67,7 @@ def property_features(config: dict) -> list[str]:
 
 def baseline_features(config: dict) -> tuple[list[str], list[str], list[str]]:
     categorical = CATEGORICAL_FEATURES
-    continuous = FLOW_NUMERIC_FEATURES + DERIVED_FEATURES
+    continuous = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
     return categorical + continuous, categorical, continuous
 
 
@@ -84,6 +94,24 @@ def make_attack_label_df(df: pd.DataFrame, labels: list[str], attack_labels: lis
 
 def make_binary_attack_df(df: pd.DataFrame, attack_labels: list[str]) -> pd.DataFrame:
     return make_attack_label_df(df, ["BENIGN", "ATTACK"], attack_labels)
+
+
+def drop_stale_derived_features(df: pd.DataFrame) -> pd.DataFrame:
+    return df.drop(columns=LEAKAGE_PRONE_ENGINEERED_FEATURES, errors="ignore")
+
+
+def recompute_time_elapsed_feature(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
+    df = df.sort_values(["id.orig_h", "id.resp_h", "ts"]).reset_index(drop=True)
+    df["time_elapsed"] = df.groupby(["id.orig_h", "id.resp_h"])["ts"].diff().fillna(999999.0)
+    return df
+
+
+def recompute_temporal_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
+    df = drop_stale_derived_features(df)
+    df = recompute_time_elapsed_feature(df)
+    return recompute_portscan_window_features(df, window_seconds)
 
 
 def recompute_portscan_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
