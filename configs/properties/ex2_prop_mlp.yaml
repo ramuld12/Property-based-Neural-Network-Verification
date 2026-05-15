@@ -1,7 +1,7 @@
 experiment:
   name: properties_multiclass_cicids2017_to_ciciot2023
   method: properties
-  task: multiclass
+  task: binary
   seed: 42
 
 data:
