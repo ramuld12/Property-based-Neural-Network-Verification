@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from thesis.data.features import filter_labels, make_binary_attack_df, recompute_portscan_window_features
+from thesis.data.features import filter_labels, make_attack_label_df, recompute_portscan_window_features
 
 
 @dataclass
@@ -21,10 +21,26 @@ def read_tsv(path: str | Path) -> pd.DataFrame:
     return pd.read_csv(path, on_bad_lines="skip", delimiter="\t")
 
 
+def attack_source_labels(config: dict) -> list[str]:
+    data_cfg = config["data"]
+    attack_labels = data_cfg.get("attack_source_labels")
+    if not attack_labels:
+        raise ValueError("data.attack_source_labels is required when data.labels includes ATTACK")
+
+    labels = data_cfg["labels"]
+    overlapping_labels = sorted(set(attack_labels) & (set(labels) - {"ATTACK"}))
+    if overlapping_labels:
+        raise ValueError(
+            "data.attack_source_labels cannot also appear as explicit labels "
+            f"when ATTACK is configured: {overlapping_labels}"
+        )
+    return attack_labels
+
+
 def prepare_labels(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     labels = config["data"]["labels"]
-    if labels == ["BENIGN", "ATTACK"]:
-        return make_binary_attack_df(df, config["data"]["attack_source_labels"])
+    if "ATTACK" in labels:
+        return make_attack_label_df(df, labels, attack_source_labels(config))
     return filter_labels(df, labels)
 
 

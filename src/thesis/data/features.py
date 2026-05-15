@@ -72,12 +72,18 @@ def filter_labels(df: pd.DataFrame, labels: list[str]) -> pd.DataFrame:
     return df
 
 
-def make_binary_attack_df(df: pd.DataFrame, attack_labels: list[str]) -> pd.DataFrame:
-    df = df[df["label"].isin(["BENIGN"] + attack_labels)].copy()
+def make_attack_label_df(df: pd.DataFrame, labels: list[str], attack_labels: list[str]) -> pd.DataFrame:
+    explicit_labels = set(labels)
+    generic_attack_sources = set(attack_labels) - explicit_labels
+    df = df[df["label"].isin(explicit_labels | generic_attack_sources)].copy()
     df["attack_type"] = df["label"]
-    df["label"] = np.where(df["label"] == "BENIGN", "BENIGN", "ATTACK")
-    df["label_id"] = df["label"].map({"BENIGN": 0, "ATTACK": 1})
+    df["label"] = np.where(df["label"].isin(generic_attack_sources), "ATTACK", df["label"])
+    df["label_id"] = df["label"].map(label_to_idx(labels))
     return df
+
+
+def make_binary_attack_df(df: pd.DataFrame, attack_labels: list[str]) -> pd.DataFrame:
+    return make_attack_label_df(df, ["BENIGN", "ATTACK"], attack_labels)
 
 
 def recompute_portscan_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:

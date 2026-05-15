@@ -313,9 +313,13 @@ def build_constraints(
     dos_precondition = FrozenFeaturePrecondition(dos_precondition, frozen_indices)
     scan_precondition = FrozenFeaturePrecondition(scan_precondition, frozen_indices)
 
-    target = label_to_idx["ATTACK"] if "ATTACK" in label_to_idx else None
-    dos_target = target if target is not None else label_to_idx["DOS_HTTP_FLOOD"]
-    scan_target = target if target is not None else label_to_idx["PORTSCAN"]
+    attack_target = label_to_idx["ATTACK"] if "ATTACK" in label_to_idx else None
+    dos_target = label_to_idx.get("DOS_HTTP_FLOOD", attack_target)
+    scan_target = label_to_idx.get("PORTSCAN", attack_target)
+    if dos_target is None:
+        raise ValueError("labels must include DOS_HTTP_FLOOD or ATTACK for DoS constraints")
+    if scan_target is None:
+        raise ValueError("labels must include PORTSCAN or ATTACK for Portscan constraints")
 
     return {
         "dos": TabularRuleConstraint(
