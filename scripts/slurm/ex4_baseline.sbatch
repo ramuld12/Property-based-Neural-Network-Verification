@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=ex2_baseline
+#SBATCH --job-name=ex4_baseline
 #SBATCH --output=outputs/ex4/baseline/slurm/%x_task-%a_job-%A.out
 #SBATCH --error=outputs/ex4/baseline/slurm/%x_task-%a_job-%A.err
 #SBATCH --time=24:00:00
