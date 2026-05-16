@@ -5,7 +5,7 @@ from statistics import mean
 
 MODELS = [
     ("RF", lambda root, ds: root / "baseline" / f"rf_to_ciciot2023_{ds}"),
-    ("Baseline MLP", lambda root, ds: root / "baseline" / f"mlp_to_ciciot2023_{ds}"),
+    ("Base MLP", lambda root, ds: root / "baseline" / f"mlp_to_ciciot2023_{ds}"),
     ("Gödel MLP", lambda root, ds: root / "properties" / "goedel" / ds),
     ("Łukasiewicz MLP", lambda root, ds: root / "properties" / "lukasiewicz" / ds),
     ("Reichenbach MLP", lambda root, ds: root / "properties" / "reichenbach" / ds),
@@ -19,6 +19,8 @@ DATASETS = [
 ]
 
 CLASSES = {
+    "ex1": ["BENIGN", "ATTACK"],
+    "ex2": ["BENIGN", "ATTACK"],
     "ex3": ["BENIGN", "PORTSCAN", "DOS_HTTP_FLOOD"],
     "ex4": ["BENIGN", "PORTSCAN", "DOS_HTTP_FLOOD", "ATTACK"],
 }
@@ -82,13 +84,7 @@ def latex_rows(experiment):
             print(r"        \hline")
 
 if __name__ == "__main__":
-    print("% Experiment 1")
-    latex_rows("ex1")
-    print()
-    print("% Experiment 2")
-    latex_rows("ex2s")
-    print("% Experiment 3")
-    latex_rows("ex3")
-    print()
-    print("% Experiment 4")
-    latex_rows("ex4")
+    for experiment in ["ex1", "ex2", "ex3", "ex4"]:
+        print(f"% Experiment {experiment.upper()}")
+        latex_rows(experiment)
+        print()
