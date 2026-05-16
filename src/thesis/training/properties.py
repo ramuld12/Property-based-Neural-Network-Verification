@@ -28,7 +28,7 @@ class PropertyTrainingContext:
 
 def make_weighted_ce_loss(train_df: pd.DataFrame, device: torch.device) -> nn.CrossEntropyLoss:
     class_counts = train_df["label_id"].value_counts().sort_index().to_numpy()
-    class_weights = 1.0 / baseline.tensor(class_counts, dtype=baseline.float32)
+    class_weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)
     class_weights = (class_weights / class_weights.mean()).to(device)
     print("class_counts:", class_counts)
     print("class_weights:", class_weights)
@@ -61,7 +61,7 @@ def precondition_bounds(precondition, x):
 
 def project_adv_if_global(x_adv, x, constraint):
     lo, hi = precondition_bounds(constraint.precondition, x)
-    return baseline.max(baseline.min(x_adv, hi), lo)
+    return torch.max(torch.min(x_adv, hi), lo)
 
 
 def make_consistent_adversarial(model, oracle, x, constraint):
@@ -103,7 +103,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
         debug_y = debug_y.to(ctx.device)
         optimizer.zero_grad()
         ce_loss = ce_fn(model(x[:, : ctx.model_feature_count]), y)
-        constraint_loss = baseline.tensor(0.0, device=ctx.device)
+        constraint_loss = torch.tensor(0.0, device=ctx.device)
 
         x_adv_dos = make_consistent_adversarial(model, oracle, x, ctx.constraints["dos"])
         dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="mean")

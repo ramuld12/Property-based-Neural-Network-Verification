@@ -4,8 +4,8 @@ from pathlib import Path
 from statistics import mean
 
 MODELS = [
-    ("RF", lambda root, ds: root / "baseline" / f"rf_to_ciciot2023_{ds}"),
-    ("Base MLP", lambda root, ds: root / "baseline" / f"mlp_to_ciciot2023_{ds}"),
+    ("Random Forest", lambda root, ds: root / "baseline" / f"rf_to_ciciot2023_{ds}"),
+    ("Baseline MLP", lambda root, ds: root / "baseline" / f"mlp_to_ciciot2023_{ds}"),
     ("Gödel MLP", lambda root, ds: root / "properties" / "goedel" / ds),
     ("Łukasiewicz MLP", lambda root, ds: root / "properties" / "lukasiewicz" / ds),
     ("Reichenbach MLP", lambda root, ds: root / "properties" / "reichenbach" / ds),
