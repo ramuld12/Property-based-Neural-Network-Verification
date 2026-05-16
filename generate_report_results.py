@@ -38,12 +38,73 @@ def complete_runs(folder):
         and (run / "cross_eval" / "classification_report.csv").exists()
     ]
 
+def complete_aggregate_runs(folder):
+    return [
+        run for run in complete_runs(folder)
+        if (run / "test" / "classification_report.csv").exists()
+    ]
+
 def fmt(value):
     return f"{value:.3f}"
 
-def latex_rows(experiment):
-    root = Path("outputs") / experiment
+def aggregate_row_values(runs):
+    train_values = {"acc": [], "prec": [], "rec": [], "f1": []}
+    cross_values = {"acc": [], "prec": [], "rec": [], "f1": []}
+
+    for run in runs:
+        train_report = read_report(run / "test" / "classification_report.csv")
+        cross_report = read_report(run / "cross_eval" / "classification_report.csv")
+
+        train_values["acc"].append(float(train_report["accuracy"]["accuracy"]))
+        train_values["prec"].append(float(train_report["weighted avg"]["precision"]))
+        train_values["rec"].append(float(train_report["weighted avg"]["recall"]))
+        train_values["f1"].append(float(train_report["weighted avg"]["f1-score"]))
+
+        cross_values["acc"].append(float(cross_report["accuracy"]["accuracy"]))
+        cross_values["prec"].append(float(cross_report["weighted avg"]["precision"]))
+        cross_values["rec"].append(float(cross_report["weighted avg"]["recall"]))
+        cross_values["f1"].append(float(cross_report["weighted avg"]["f1-score"]))
+
+    ordered = ["acc", "prec", "rec", "f1"]
+    return [fmt(mean(train_values[key])) for key in ordered] + [
+        fmt(mean(cross_values[key])) for key in ordered
+    ]
+
+def print_aggregate_rows(experiments):
+    print("% Overall aggregate rows")
+    for experiment in experiments:
+        root = Path("outputs/different_features") / experiment
+        exp_label = experiment.upper().replace("EX", "E")
+
+        for dataset_label, dataset_key in DATASETS:
+            for model_label, folder_fn in MODELS:
+                runs = complete_aggregate_runs(folder_fn(root, dataset_key))
+                if not runs:
+                    print(
+                        f"        {exp_label} & {dataset_label} & {model_label} "
+                        r"& \multicolumn{8}{c}{No complete runs} \\"
+                    )
+                    continue
+
+                values = aggregate_row_values(runs)
+                print(
+                    f"        {exp_label} & {dataset_label} & {model_label} & "
+                    + " & ".join(values)
+                    + r" \\"
+                )
+
+            if dataset_key == "good":
+                print(r"        \hline")
+
+        if experiment != experiments[-1]:
+            print(r"        \hline")
+
+def print_per_class_rows(experiment):
+    root = Path("outputs/different_features") / experiment
     classes = CLASSES[experiment]
+    exp_label = experiment.upper().replace("EX", "E")
+
+    print(f"% {exp_label} per-class rows")
 
     for dataset_label, dataset_key in DATASETS:
         for model_label, folder_fn in MODELS:
@@ -84,7 +145,10 @@ def latex_rows(experiment):
             print(r"        \hline")
 
 if __name__ == "__main__":
-    for experiment in ["ex1", "ex2", "ex3", "ex4"]:
-        print(f"% Experiment {experiment.upper()}")
-        latex_rows(experiment)
+    experiments = ["ex1", "ex2", "ex3", "ex4"]
+    print_aggregate_rows(experiments)
+    print()
+
+    for experiment in experiments:
+        print_per_class_rows(experiment)
         print()

@@ -4,7 +4,7 @@ import copy
 
 import numpy as np
 import pandas as pd
-import thesis.training.baseline as baseline
+import torch
 import torch.nn as nn
 from sklearn.metrics import f1_score
 
@@ -19,7 +19,7 @@ def improved_attack_f1_or_loss(attack_f1: float, best_attack_f1: float, val_loss
 def train_torch_classifier(model, train_loader, val_loader, config: dict, device):
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = baseline.optim.Adam(model.parameters(), lr=config["model"]["learning_rate"])
+    optimizer = torch.optim.Adam(model.parameters(), lr=config["model"]["learning_rate"])
     patience = config["model"].get("patience", 5)
     min_delta = config["model"].get("min_delta", 1e-4)
     labels = config["data"]["labels"]
@@ -49,7 +49,7 @@ def train_torch_classifier(model, train_loader, val_loader, config: dict, device
         val_losses = []
         y_true, y_pred = [], []
         model.eval()
-        with baseline.no_grad():
+        with torch.no_grad():
             for x, y in val_loader:
                 x = x.to(device)
                 y = y.to(device)
@@ -98,7 +98,7 @@ def train_torch_classifier(model, train_loader, val_loader, config: dict, device
     return model, pd.DataFrame(history)
 
 
-@baseline.no_grad()
+@torch.no_grad()
 def predict_torch(model, loader, device):
     model = model.to(device)
     model.eval()
