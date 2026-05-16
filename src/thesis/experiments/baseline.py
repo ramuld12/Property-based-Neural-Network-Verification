@@ -6,13 +6,13 @@ from sklearn.ensemble import RandomForestClassifier
 from torch.utils.data import DataLoader, TensorDataset
 
 from thesis.data.datasets import load_experiment_data
-from thesis.data.features import baseline_features
+from thesis.data.features import SHARED_MODEL_FEATURES
 from thesis.data.preprocessing import fit_baseline_data, torch_loaders_from_arrays
 from thesis.experiments.common import make_run_dir, save_json, save_model, save_run_config, set_seed
 from thesis.models.torch_models import build_model
 from thesis.results.metrics import classification_outputs, save_eval_outputs
 from thesis.results.plotting import plot_eval_summary
-from thesis.training.torch import predict_torch, train_torch_classifier
+from thesis.training.baseline import predict_torch, train_torch_classifier
 
 
 def _array_loader(x, y, batch_size):
@@ -48,13 +48,9 @@ def run_baseline(config: dict):
         f"cross_eval_path={config['data'].get('cross_eval_path')}"
     )
 
-    features, categorical_cols, continuous_cols = baseline_features()
-    data = fit_baseline_data(load_experiment_data(config), config, features, categorical_cols, continuous_cols)
-    print(
-        f"\nfeatures={len(data.features)} "
-        f"categorical={len(data.categorical_cols)} "
-        f"continuous={len(data.continuous_cols)}"
-    )
+    features = list(SHARED_MODEL_FEATURES)
+    data = fit_baseline_data(load_experiment_data(config), config, features)
+    print(f"\nfeatures={len(data.features)}")
     print_split_counts("train", data.labels, data.y_train)
     print_split_counts("val", data.labels, data.y_val)
     print_split_counts("test", data.labels, data.y_test)
@@ -102,10 +98,7 @@ def run_baseline(config: dict):
             "features": data.features,
             "labels": data.labels,
             "model_type": model_type,
-            "ordinal_encoder": data.ordinal_encoder,
             "scaler": data.scaler,
-            "categorical_cols": data.categorical_cols,
-            "continuous_cols": data.continuous_cols,
             "config": config,
         },
     )

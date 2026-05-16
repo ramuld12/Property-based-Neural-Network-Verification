@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 
 from thesis.data.datasets import load_experiment_data
-from thesis.data.features import DEFAULT_PROPERTY_FROZEN_FEATURES, property_features
+from thesis.data.features import DEFAULT_PROPERTY_FROZEN_FEATURES, SHARED_MODEL_FEATURES
 from thesis.data.preprocessing import fit_property_data
 from thesis.experiments.common import make_run_dir, save_json, save_model, save_run_config, set_seed
 from thesis.models.torch_models import build_model
@@ -19,7 +19,7 @@ def run_properties(config: dict):
     run_dir = make_run_dir(config)
     save_run_config(config, run_dir)
 
-    feature_cols = property_features(config)
+    feature_cols = list(SHARED_MODEL_FEATURES)
     data = fit_property_data(load_experiment_data(config), config, feature_cols)
     frozen_features = config["properties"].get("frozen_features", DEFAULT_PROPERTY_FROZEN_FEATURES)
     constraints = build_constraints(

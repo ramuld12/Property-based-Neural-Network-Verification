@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
-import torch
+import thesis.training.baseline as baseline
 import torch.nn as nn
 import property_driven_ml.logics as logics
 import property_driven_ml.training as pml_training
@@ -20,15 +20,15 @@ class PropertyTrainingContext:
     constraints: dict
     oracle: object
     labels: list[str]
-    device: torch.device
+    device: baseline.device
     model_feature_count: int
     lambda_dos: float
     lambda_scan: float
 
 
-def make_weighted_ce_loss(train_df: pd.DataFrame, device: torch.device) -> nn.CrossEntropyLoss:
+def make_weighted_ce_loss(train_df: pd.DataFrame, device: baseline.device) -> nn.CrossEntropyLoss:
     class_counts = train_df["label_id"].value_counts().sort_index().to_numpy()
-    class_weights = 1.0 / torch.tensor(class_counts, dtype=torch.float32)
+    class_weights = 1.0 / baseline.tensor(class_counts, dtype=baseline.float32)
     class_weights = (class_weights / class_weights.mean()).to(device)
     print("class_counts:", class_counts)
     print("class_weights:", class_weights)
@@ -61,7 +61,7 @@ def precondition_bounds(precondition, x):
 
 def project_adv_if_global(x_adv, x, constraint):
     lo, hi = precondition_bounds(constraint.precondition, x)
-    return torch.max(torch.min(x_adv, hi), lo)
+    return baseline.max(baseline.min(x_adv, hi), lo)
 
 
 def make_consistent_adversarial(model, oracle, x, constraint):
@@ -103,7 +103,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
         debug_y = debug_y.to(ctx.device)
         optimizer.zero_grad()
         ce_loss = ce_fn(model(x[:, : ctx.model_feature_count]), y)
-        constraint_loss = torch.tensor(0.0, device=ctx.device)
+        constraint_loss = baseline.tensor(0.0, device=ctx.device)
 
         x_adv_dos = make_consistent_adversarial(model, oracle, x, ctx.constraints["dos"])
         dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="mean")
@@ -159,7 +159,7 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
     for x, y, debug_y in loader:
         x = x.to(ctx.device)
         y = y.to(ctx.device)
-        with torch.no_grad():
+        with baseline.no_grad():
             logits = model(x[:, : ctx.model_feature_count])
             preds = logits.argmax(dim=1)
             if ce_fn is not None:
@@ -168,14 +168,14 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
         y_pred.extend(preds.cpu().numpy())
 
         x_adv_dos = make_consistent_adversarial(model, ctx.oracle, x, ctx.constraints["dos"])
-        with torch.no_grad():
+        with baseline.no_grad():
             loss, sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="sum")
         totals["adv_dos_loss"] += loss.item()
         totals["adv_dos_sat"] += sat.item()
         counts["dos"] += x.size(0)
 
         x_adv_scan = make_consistent_adversarial(model, ctx.oracle, x, ctx.constraints["scan"])
-        with torch.no_grad():
+        with baseline.no_grad():
             loss, sat = ctx.constraints["scan"].eval(model, x, x_adv_scan, None, ctx.logic, reduction="sum")
         totals["adv_scan_loss"] += loss.item()
         totals["adv_scan_sat"] += sat.item()
@@ -217,7 +217,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
         lambda_dos=prop_cfg["lambda_dos"],
         lambda_scan=prop_cfg["lambda_scan"],
     )
-    optimizer = torch.optim.Adam(model.parameters(), lr=config["model"]["learning_rate"])
+    optimizer = baseline.optim.Adam(model.parameters(), lr=config["model"]["learning_rate"])
     grad_norm = pml_training.GradNorm(model, device, optimizer, lr=config["model"]["learning_rate"], alpha=1.5)
     ce_fn = make_weighted_ce_loss(data.train_df, device)
 

@@ -3,13 +3,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-CATEGORICAL_FEATURES = [
-    "proto", 
-    "service", 
-    "conn_state", 
-    "history"
-]
-
 FLOW_NUMERIC_FEATURES = [
     "duration",
     "orig_bytes",
@@ -35,7 +28,7 @@ ENGINEERED_FEATURES = [
 
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
-DEFAULT_PROPERTY_TRAINABLE_FEATURES = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
+SHARED_MODEL_FEATURES = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
 DEFAULT_PROPERTY_FROZEN_FEATURES = [
     "valid_tcp_handshake",
     "valid_http_conn",
@@ -49,21 +42,6 @@ DEFAULT_PROPERTY_FROZEN_FEATURES = [
 ]
 
 PORTSCAN_FAILED_STATES = {"S0", "REJ", "RSTO", "RSTR", "RSTOS0", "RSTRH", "SH", "SHR"}
-
-
-def property_features(config: dict) -> list[str]:
-    features = config.get("properties", {}).get("trainable_features", DEFAULT_PROPERTY_TRAINABLE_FEATURES)
-    available_features = set(DEFAULT_PROPERTY_TRAINABLE_FEATURES)
-    unknown_features = sorted(set(features) - available_features)
-    if unknown_features:
-        raise ValueError(f"Unknown trainable_features: {unknown_features}")
-    return features
-
-
-def baseline_features() -> tuple[list[str], list[str], list[str]]:
-    categorical = CATEGORICAL_FEATURES
-    continuous = FLOW_NUMERIC_FEATURES
-    return categorical + continuous, categorical, continuous
 
 
 def label_to_idx(labels: list[str]) -> dict[str, int]:

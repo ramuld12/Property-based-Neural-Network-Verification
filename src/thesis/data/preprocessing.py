@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import MinMaxScaler, OrdinalEncoder
+from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from thesis.data.features import BOOLEAN_FEATURES
@@ -48,11 +48,8 @@ class BaselineData:
     y_test: np.ndarray
     y_cross_eval: np.ndarray | None
     features: list[str]
-    categorical_cols: list[str]
-    continuous_cols: list[str]
     labels: list[str]
     scaler: MinMaxScaler
-    ordinal_encoder: OrdinalEncoder
 
 
 def make_loader(df: pd.DataFrame, feature_cols: list[str], batch_size: int, shuffle: bool = False) -> DataLoader:
@@ -157,25 +154,28 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
     )
 
 
-def fit_baseline_data(data, config: dict, feature_cols: list[str], categorical_cols: list[str], continuous_cols: list[str]) -> BaselineData:
+def fit_baseline_data(data, config: dict, feature_cols: list[str]) -> BaselineData:
     train_df = data.train.copy()
     val_df = data.val.copy()
     test_df = data.test.copy()
     cross_eval_df = None if data.cross_eval is None else data.cross_eval.copy()
     frames = [train_df, val_df, test_df] + ([] if cross_eval_df is None else [cross_eval_df])
 
-    encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-    train_df[categorical_cols] = encoder.fit_transform(train_df[categorical_cols])
-    for df in frames[1:]:
-        df[categorical_cols] = encoder.transform(df[categorical_cols])
-
+    scale_cols = [col for col in feature_cols if col not in BOOLEAN_FEATURES]
     for df in frames:
-        df[continuous_cols] = df[continuous_cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        df[feature_cols] = df[feature_cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+    clip_lower = train_df[scale_cols].quantile(0.01)
+    clip_upper = train_df[scale_cols].quantile(0.99)
 
     scaler = MinMaxScaler()
-    train_df[feature_cols] = scaler.fit_transform(train_df[feature_cols])
+    train_df[scale_cols] = train_df[scale_cols].clip(lower=clip_lower, upper=clip_upper, axis=1)
     for df in frames[1:]:
-        df[feature_cols] = scaler.transform(df[feature_cols])
+        df[scale_cols] = df[scale_cols].clip(lower=clip_lower, upper=clip_upper, axis=1)
+
+    train_df[scale_cols] = scaler.fit_transform(train_df[scale_cols])
+    for df in frames[1:]:
+        df[scale_cols] = scaler.transform(df[scale_cols])
 
     return BaselineData(
         x_train=train_df[feature_cols].to_numpy(dtype=np.float32),
@@ -187,11 +187,8 @@ def fit_baseline_data(data, config: dict, feature_cols: list[str], categorical_c
         y_test=test_df["label_id"].to_numpy(dtype=np.int64),
         y_cross_eval=None if cross_eval_df is None else cross_eval_df["label_id"].to_numpy(dtype=np.int64),
         features=feature_cols,
-        categorical_cols=categorical_cols,
-        continuous_cols=continuous_cols,
         labels=config["data"]["labels"],
         scaler=scaler,
-        ordinal_encoder=encoder,
     )
 
 
