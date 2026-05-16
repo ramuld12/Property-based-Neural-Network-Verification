@@ -11,6 +11,8 @@ import property_driven_ml.logics as logics
 import property_driven_ml.training as pml_training
 from sklearn.metrics import f1_score
 
+from thesis.data.preprocessing import DEBUG_LABEL_DOS_HTTP_FLOOD, DEBUG_LABEL_PORTSCAN
+
 
 @dataclass
 class PropertyTrainingContext:
@@ -67,12 +69,6 @@ def make_consistent_adversarial(model, oracle, x, constraint):
     return project_adv_if_global(x_adv, x, constraint)
 
 
-@torch.no_grad()
-def rule_mask(constraint, model, x, y, class_idx):
-    parts = constraint.postcondition.debug_parts(model, x, x)
-    return (y == class_idx) & parts["antecedent_true"]
-
-
 def update_rule_stats(stats: dict, parts: dict) -> None:
     for name, mask in parts.items():
         filtered_mask = mask.detach().bool()
@@ -84,43 +80,60 @@ def update_rule_stats(stats: dict, parts: dict) -> None:
 def print_rule_stats(name: str, stats: dict) -> None:
     if not stats:
         return
-    print(f"\n{name} rule debug - true-label rows only")
+    print(f"\n{name} rule debug - original-subtype rows only")
     for part_name, values in stats.items():
         true = values["true"]
         total = values["total"]
         print(f"{part_name:25s} {true:8d}/{total:<8d}  {true / max(total, 1):.4f}")
 
 
+def update_debug_stats_for_subtype(stats: dict, constraint, model, x, x_adv, debug_y, subtype_id: int) -> None:
+    mask = debug_y == subtype_id
+    if mask.any():
+        update_rule_stats(stats, constraint.postcondition.debug_parts(model, x[mask], x_adv[mask]))
+
+
 def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: PropertyTrainingContext, epoch: int) -> dict:
     model.train()
     totals = {"ce_loss": 0.0, "scaled_dos_loss": 0.0, "scaled_scan_loss": 0.0, "dos_sat": 0.0, "scan_sat": 0.0}
     dos_debug_stats, scan_debug_stats = {}, {}
-    for x, y in loader:
+    for x, y, debug_y in loader:
         x = x.to(ctx.device)
         y = y.to(ctx.device)
+        debug_y = debug_y.to(ctx.device)
         optimizer.zero_grad()
         ce_loss = ce_fn(model(x[:, : ctx.model_feature_count]), y)
         constraint_loss = torch.tensor(0.0, device=ctx.device)
 
-        dos_mask = rule_mask(ctx.constraints["dos"], model, x, y, ctx.constraints["dos_class"])
-        if dos_mask.any():
-            x_dos = x[dos_mask]
-            x_adv = make_consistent_adversarial(model, oracle, x_dos, ctx.constraints["dos"])
-            dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x_dos, x_adv, None, ctx.logic, reduction="mean")
-            constraint_loss = constraint_loss + ctx.lambda_dos * dos_loss
-            totals["scaled_dos_loss"] += ctx.lambda_dos * dos_loss.item()
-            totals["dos_sat"] += dos_sat.item()
-            update_rule_stats(dos_debug_stats, ctx.constraints["dos"].postcondition.debug_parts(model, x_dos, x_adv))
+        x_adv_dos = make_consistent_adversarial(model, oracle, x, ctx.constraints["dos"])
+        dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="mean")
+        constraint_loss = constraint_loss + ctx.lambda_dos * dos_loss
+        totals["scaled_dos_loss"] += ctx.lambda_dos * dos_loss.item()
+        totals["dos_sat"] += dos_sat.item()
+        update_debug_stats_for_subtype(
+            dos_debug_stats,
+            ctx.constraints["dos"],
+            model,
+            x,
+            x_adv_dos,
+            debug_y,
+            DEBUG_LABEL_DOS_HTTP_FLOOD,
+        )
 
-        scan_mask = rule_mask(ctx.constraints["scan"], model, x, y, ctx.constraints["scan_class"])
-        if scan_mask.any():
-            x_scan = x[scan_mask]
-            x_adv = make_consistent_adversarial(model, oracle, x_scan, ctx.constraints["scan"])
-            scan_loss, scan_sat = ctx.constraints["scan"].eval(model, x_scan, x_adv, None, ctx.logic, reduction="mean")
-            constraint_loss = constraint_loss + ctx.lambda_scan * scan_loss
-            totals["scaled_scan_loss"] += ctx.lambda_scan * scan_loss.item()
-            totals["scan_sat"] += scan_sat.item()
-            update_rule_stats(scan_debug_stats, ctx.constraints["scan"].postcondition.debug_parts(model, x_scan, x_adv))
+        x_adv_scan = make_consistent_adversarial(model, oracle, x, ctx.constraints["scan"])
+        scan_loss, scan_sat = ctx.constraints["scan"].eval(model, x, x_adv_scan, None, ctx.logic, reduction="mean")
+        constraint_loss = constraint_loss + ctx.lambda_scan * scan_loss
+        totals["scaled_scan_loss"] += ctx.lambda_scan * scan_loss.item()
+        totals["scan_sat"] += scan_sat.item()
+        update_debug_stats_for_subtype(
+            scan_debug_stats,
+            ctx.constraints["scan"],
+            model,
+            x,
+            x_adv_scan,
+            debug_y,
+            DEBUG_LABEL_PORTSCAN,
+        )
 
         if epoch > 3:
             grad_norm.balance(ce_loss, constraint_loss)
@@ -143,7 +156,7 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
     counts = {"dos": 0, "scan": 0}
     ce_losses = []
 
-    for x, y in loader:
+    for x, y, debug_y in loader:
         x = x.to(ctx.device)
         y = y.to(ctx.device)
         with torch.no_grad():
@@ -154,25 +167,19 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
         y_true.extend(y.cpu().numpy())
         y_pred.extend(preds.cpu().numpy())
 
-        dos_mask = rule_mask(ctx.constraints["dos"], model, x, y, ctx.constraints["dos_class"])
-        if dos_mask.any():
-            x_dos = x[dos_mask]
-            x_adv = make_consistent_adversarial(model, ctx.oracle, x_dos, ctx.constraints["dos"])
-            with torch.no_grad():
-                loss, sat = ctx.constraints["dos"].eval(model, x_dos, x_adv, None, ctx.logic, reduction="sum")
-            totals["adv_dos_loss"] += loss.item()
-            totals["adv_dos_sat"] += sat.item()
-            counts["dos"] += x_dos.size(0)
+        x_adv_dos = make_consistent_adversarial(model, ctx.oracle, x, ctx.constraints["dos"])
+        with torch.no_grad():
+            loss, sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="sum")
+        totals["adv_dos_loss"] += loss.item()
+        totals["adv_dos_sat"] += sat.item()
+        counts["dos"] += x.size(0)
 
-        scan_mask = rule_mask(ctx.constraints["scan"], model, x, y, ctx.constraints["scan_class"])
-        if scan_mask.any():
-            x_scan = x[scan_mask]
-            x_adv = make_consistent_adversarial(model, ctx.oracle, x_scan, ctx.constraints["scan"])
-            with torch.no_grad():
-                loss, sat = ctx.constraints["scan"].eval(model, x_scan, x_adv, None, ctx.logic, reduction="sum")
-            totals["adv_scan_loss"] += loss.item()
-            totals["adv_scan_sat"] += sat.item()
-            counts["scan"] += x_scan.size(0)
+        x_adv_scan = make_consistent_adversarial(model, ctx.oracle, x, ctx.constraints["scan"])
+        with torch.no_grad():
+            loss, sat = ctx.constraints["scan"].eval(model, x, x_adv_scan, None, ctx.logic, reduction="sum")
+        totals["adv_scan_loss"] += loss.item()
+        totals["adv_scan_sat"] += sat.item()
+        counts["scan"] += x.size(0)
 
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)

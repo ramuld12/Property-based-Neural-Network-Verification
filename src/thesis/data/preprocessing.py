@@ -11,6 +11,10 @@ from torch.utils.data import DataLoader, TensorDataset
 from thesis.data.features import BOOLEAN_FEATURES
 from thesis.properties.specs import make_scaled_attack_specs
 
+DEBUG_LABEL_OTHER = 0
+DEBUG_LABEL_DOS_HTTP_FLOOD = 1
+DEBUG_LABEL_PORTSCAN = 2
+
 
 @dataclass
 class PropertyData:
@@ -54,7 +58,14 @@ class BaselineData:
 def make_loader(df: pd.DataFrame, feature_cols: list[str], batch_size: int, shuffle: bool = False) -> DataLoader:
     x = torch.tensor(df[feature_cols].to_numpy(), dtype=torch.float32)
     y = torch.tensor(df["label_id"].to_numpy(), dtype=torch.long)
-    return DataLoader(TensorDataset(x, y), batch_size=batch_size, shuffle=shuffle)
+    debug_labels = df.get("attack_type", df["label"]).map(
+        {
+            "DOS_HTTP_FLOOD": DEBUG_LABEL_DOS_HTTP_FLOOD,
+            "PORTSCAN": DEBUG_LABEL_PORTSCAN,
+        }
+    ).fillna(DEBUG_LABEL_OTHER)
+    debug_y = torch.tensor(debug_labels.to_numpy(), dtype=torch.long)
+    return DataLoader(TensorDataset(x, y, debug_y), batch_size=batch_size, shuffle=shuffle)
 
 
 def add_property_aux_columns(df: pd.DataFrame) -> pd.DataFrame:

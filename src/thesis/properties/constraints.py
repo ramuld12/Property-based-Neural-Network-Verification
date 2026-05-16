@@ -108,6 +108,12 @@ class DoSHttpFloodPostcondition(Postcondition):
     def scale_col(self, raw_value, col):
         return scaled_col(raw_value, col, self.scaler, self.scale_cols)
 
+    def scaled_threshold(self, reference, raw_value, col):
+        return self.scale_col(torch.full_like(reference, raw_value), col)
+
+    def raw_time_elapsed(self, x):
+        return self.raw_col(x[:, self.idx["time_elapsed"]], "time_elapsed")
+
     def rates_from_adv(self, x_adv):
         duration = self.raw_col(x_adv[:, self.idx["duration"]], "duration").clamp_min(1e-8)
         orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
@@ -119,8 +125,8 @@ class DoSHttpFloodPostcondition(Postcondition):
     def consistent_adv(self, x_adv):
         x_consistent = x_adv.clone()
         orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
-        x_consistent[:, self.idx["orig_byte_rate"]] = self.scale_col(orig_byte_rate, "orig_byte_rate")
-        x_consistent[:, self.idx["orig_pkt_rate"]] = self.scale_col(orig_pkt_rate, "orig_pkt_rate")
+        x_consistent[:, self.idx["orig_byte_rate"]] = self.scale_col(orig_byte_rate, "orig_byte_rate").clamp(0.0, 1.0)
+        x_consistent[:, self.idx["orig_pkt_rate"]] = self.scale_col(orig_pkt_rate, "orig_pkt_rate").clamp(0.0, 1.0)
         return x_consistent
 
     def get_postcondition(self, N, x, x_adv):
@@ -128,23 +134,40 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
+        scaled_orig_bytes = x_adv[:, self.idx["orig_bytes"]]
+        scaled_orig_byte_rate = x_consistent[:, self.idx["orig_byte_rate"]]
+        scaled_orig_pkt_rate = x_consistent[:, self.idx["orig_pkt_rate"]]
         raw_orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
-        orig_byte_rate, orig_pkt_rate = self.rates_from_adv(x_adv)
         dos_logit, max_other_logit = target_logits(N, x_consistent, self.class_idx, self.model_feature_count)
         return lambda logic: implies(
             logic,
             [
                 logic.LT(orig_bytes_per_packet, torch.full_like(orig_bytes_per_packet, self.dos_http_flood_specs["valid_packet_size_individual_min"])),
-                logic.LT(raw_orig_bytes, torch.full_like(raw_orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"])),
+                logic.LT(
+                    scaled_orig_bytes,
+                    self.scaled_threshold(scaled_orig_bytes, self.dos_http_flood_specs["valid_pkt_size_total_min"], "orig_bytes"),
+                ),
                 logic.LT(valid_tcp, torch.full_like(valid_tcp, 0.5)),
                 logic.LT(valid_http, torch.full_like(valid_http, 0.5)),
-                logic.LT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_min"])),
-                logic.GT(time_elapsed, torch.full_like(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_max"])),
-                logic.OR(
-                    logic.LT(orig_byte_rate, torch.full_like(orig_byte_rate, self.dos_http_flood_specs["mal_byte_rate_min"])),
-                    logic.LT(orig_pkt_rate, torch.full_like(orig_pkt_rate, self.dos_http_flood_specs["mal_pkt_rate_min"])),
+                logic.LT(
+                    time_elapsed,
+                    self.scaled_threshold(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_min"], "time_elapsed"),
+                ),
+                logic.GT(
+                    time_elapsed,
+                    self.scaled_threshold(time_elapsed, self.dos_http_flood_specs["mal_time_elapsed_max"], "time_elapsed"),
+                ),
+                logic.AND(
+                    logic.LT(
+                        scaled_orig_byte_rate,
+                        self.scaled_threshold(scaled_orig_byte_rate, self.dos_http_flood_specs["mal_byte_rate_min"], "orig_byte_rate"),
+                    ),
+                    logic.LT(
+                        scaled_orig_pkt_rate,
+                        self.scaled_threshold(scaled_orig_pkt_rate, self.dos_http_flood_specs["mal_pkt_rate_min"], "orig_pkt_rate"),
+                    ),
                 ),
             ],
             logic.GEQ(dos_logit, max_other_logit),
@@ -155,8 +178,7 @@ class DoSHttpFloodPostcondition(Postcondition):
         x_consistent = self.consistent_adv(x_adv)
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
-        time_elapsed = x[:, self.idx["time_elapsed"]]
-        orig_bytes = x_adv[:, self.idx["orig_bytes"]]
+        time_elapsed = self.raw_time_elapsed(x)
         raw_orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
@@ -164,7 +186,7 @@ class DoSHttpFloodPostcondition(Postcondition):
         valid_sizes = (
             (orig_bytes_per_packet >= self.dos_http_flood_specs["valid_packet_size_individual_min"])
             & (raw_orig_pkts >= 1.0)
-            & (orig_bytes >= self.dos_http_flood_specs["valid_pkt_size_total_min"])
+            & (raw_orig_bytes >= self.dos_http_flood_specs["valid_pkt_size_total_min"])
         )
         time_elapsed_ok = (
             (time_elapsed >= self.dos_http_flood_specs["mal_time_elapsed_min"])
@@ -179,7 +201,7 @@ class DoSHttpFloodPostcondition(Postcondition):
             "ValidSizes": valid_sizes,
             "ValidTCPHandshake": valid_tcp == 1,
             "ValidHTTPConn": valid_http == 1,
-            "TimeElapsed": time_elapsed_ok,
+            "ValidTimeElapsed": time_elapsed_ok,
             "MaliciousFloodRate": malicious_flood_rate,
             "prediction_ok": target_logit_wins(N, x_consistent, self.class_idx, self.model_feature_count),
         }
@@ -187,7 +209,7 @@ class DoSHttpFloodPostcondition(Postcondition):
             parts["ValidSizes"]
             & parts["ValidTCPHandshake"]
             & parts["ValidHTTPConn"]
-            & parts["TimeElapsed"]
+            & parts["ValidTimeElapsed"]
             & parts["MaliciousFloodRate"]
         )
         return parts
@@ -207,6 +229,9 @@ class PortscanPostcondition(Postcondition):
 
     def scale_col(self, raw_value, col):
         return scaled_col(raw_value, col, self.scaler, self.scale_cols)
+
+    def scaled_threshold(self, reference, raw_value, col):
+        return self.scale_col(torch.full_like(reference, raw_value), col)
 
     def round_ste(self, value):
         return value + (torch.round(value) - value).detach()
@@ -230,8 +255,8 @@ class PortscanPostcondition(Postcondition):
         scan_duration = torch.maximum(ts + adv_duration, max_flow_end_without_row) - window_min_ts
 
         x_consistent[:, self.idx["uniq_dst_ports"]] = x[:, self.idx["uniq_dst_ports"]]
-        x_consistent[:, self.idx["pkts_per_port"]] = self.scale_col(pkts_per_port, "pkts_per_port")
-        x_consistent[:, self.idx["scan_duration"]] = self.scale_col(scan_duration, "scan_duration")
+        x_consistent[:, self.idx["pkts_per_port"]] = self.scale_col(pkts_per_port, "pkts_per_port").clamp(0.0, 1.0)
+        x_consistent[:, self.idx["scan_duration"]] = self.scale_col(scan_duration, "scan_duration").clamp(0.0, 1.0)
         x_consistent[:, self.idx["fail_ratio"]] = x[:, self.idx["fail_ratio"]]
         return x_consistent
 
@@ -246,15 +271,31 @@ class PortscanPostcondition(Postcondition):
     def get_postcondition(self, N, x, x_adv):
         x_consistent = self.consistent_adv(x, x_adv)
         uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
+        scaled_uniq_dst_ports = self.scale_col(uniq_dst_ports, "uniq_dst_ports")
+        scaled_fail_ratio = self.scale_col(fail_ratio, "fail_ratio")
+        scaled_pkts_per_port = self.scale_col(pkts_per_port, "pkts_per_port")
+        scaled_scan_duration = self.scale_col(scan_duration, "scan_duration")
         scan_logit, max_other_logit = target_logits(N, x_consistent, self.class_idx, self.model_feature_count)
         return lambda logic: implies(
             logic,
             [
-                logic.LT(uniq_dst_ports, torch.full_like(uniq_dst_ports, self.portscan_specs["mal_uniq_dst_ports_min"])),
+                logic.LT(
+                    scaled_uniq_dst_ports,
+                    self.scaled_threshold(scaled_uniq_dst_ports, self.portscan_specs["mal_uniq_dst_ports_min"], "uniq_dst_ports"),
+                ),
                 logic.AND(
-                    logic.LEQ(fail_ratio, torch.full_like(fail_ratio, self.portscan_specs["mal_fail_ratio_min"])),
-                    logic.GT(pkts_per_port, torch.full_like(pkts_per_port, self.portscan_specs["mal_pkts_per_port_max"])),
-                    logic.GEQ(scan_duration, torch.full_like(scan_duration, self.portscan_specs["mal_scan_duration_max"])),
+                    logic.LT(
+                        scaled_fail_ratio,
+                        self.scaled_threshold(scaled_fail_ratio, self.portscan_specs["mal_fail_ratio_min"], "fail_ratio"),
+                    ),
+                    logic.GT(
+                        scaled_pkts_per_port,
+                        self.scaled_threshold(scaled_pkts_per_port, self.portscan_specs["mal_pkts_per_port_max"], "pkts_per_port"),
+                    ),
+                    logic.GT(
+                        scaled_scan_duration,
+                        self.scaled_threshold(scaled_scan_duration, self.portscan_specs["mal_scan_duration_max"], "scan_duration"),
+                    ),
                 ),
             ],
             logic.GEQ(scan_logit, max_other_logit)
