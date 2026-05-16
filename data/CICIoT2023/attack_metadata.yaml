@@ -3,6 +3,21 @@ BenignTraffic:
   victim_macs: []
   known_ips: []
 
+BenignTraffic1:
+  label: BENIGN
+  victim_macs: []
+  known_ips: []
+
+BenignTraffic2:
+  label: BENIGN
+  victim_macs: []
+  known_ips: []
+
+BenignTraffic3:
+  label: BENIGN
+  victim_macs: []
+  known_ips: []
+
 DictionaryBruteForce:
   label: BRUTE_FORCE
   victim_macs:
