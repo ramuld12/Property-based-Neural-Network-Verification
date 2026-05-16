@@ -48,7 +48,7 @@ def run_baseline(config: dict):
         f"cross_eval_path={config['data'].get('cross_eval_path')}"
     )
 
-    features, categorical_cols, continuous_cols = baseline_features(config)
+    features, categorical_cols, continuous_cols = baseline_features()
     data = fit_baseline_data(load_experiment_data(config), config, features, categorical_cols, continuous_cols)
     print(
         f"\nfeatures={len(data.features)} "

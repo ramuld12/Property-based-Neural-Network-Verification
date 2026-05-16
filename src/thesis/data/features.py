@@ -3,7 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-CATEGORICAL_FEATURES = ["proto", "service", "conn_state", "history"]
+CATEGORICAL_FEATURES = [
+    "proto", 
+    "service", 
+    "conn_state", 
+    "history"
+]
 
 FLOW_NUMERIC_FEATURES = [
     "duration",
@@ -30,16 +35,6 @@ ENGINEERED_FEATURES = [
 
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
-LEAKAGE_PRONE_ENGINEERED_FEATURES = [
-    "time_elapsed",
-    "window_id",
-    "is_failed_conn",
-    "uniq_dst_ports",
-    "pkts_per_port",
-    "scan_duration",
-    "fail_ratio",
-]
-
 DEFAULT_PROPERTY_TRAINABLE_FEATURES = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
 DEFAULT_PROPERTY_FROZEN_FEATURES = [
     "valid_tcp_handshake",
@@ -65,9 +60,9 @@ def property_features(config: dict) -> list[str]:
     return features
 
 
-def baseline_features(config: dict) -> tuple[list[str], list[str], list[str]]:
+def baseline_features() -> tuple[list[str], list[str], list[str]]:
     categorical = CATEGORICAL_FEATURES
-    continuous = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
+    continuous = FLOW_NUMERIC_FEATURES
     return categorical + continuous, categorical, continuous
 
 
@@ -111,14 +106,12 @@ def compute_time_elapsed(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def compute_portscan_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
+def compute_portscan_window_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
     df["orig_pkts"] = pd.to_numeric(df["orig_pkts"], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     df["duration"] = pd.to_numeric(df["duration"], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     df["flow_end_ts"] = df["ts"] + df["duration"]
-    if "window_id" not in df.columns:
-        df = compute_window_id(df, window_seconds)
     df["is_failed_conn"] = df["conn_state"].astype(str).isin(PORTSCAN_FAILED_STATES).astype(int)
 
     agg = (
