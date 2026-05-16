@@ -96,11 +96,14 @@ def make_binary_attack_df(df: pd.DataFrame, attack_labels: list[str]) -> pd.Data
     return make_attack_label_df(df, ["BENIGN", "ATTACK"], attack_labels)
 
 
-def drop_stale_derived_features(df: pd.DataFrame) -> pd.DataFrame:
-    return df.drop(columns=LEAKAGE_PRONE_ENGINEERED_FEATURES, errors="ignore")
+def compute_window_id(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
+    df = df.copy()
+    df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
+    df["window_id"] = (df["ts"] // window_seconds).astype(int)
+    return df
 
 
-def recompute_time_elapsed_feature(df: pd.DataFrame) -> pd.DataFrame:
+def compute_time_elapsed(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
     df = df.sort_values(["id.orig_h", "id.resp_h", "ts"]).reset_index(drop=True)
@@ -108,19 +111,14 @@ def recompute_time_elapsed_feature(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def recompute_temporal_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
-    df = drop_stale_derived_features(df)
-    df = recompute_time_elapsed_feature(df)
-    return recompute_portscan_window_features(df, window_seconds)
-
-
-def recompute_portscan_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
+def compute_portscan_window_features(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
     df = df.copy()
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
     df["orig_pkts"] = pd.to_numeric(df["orig_pkts"], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     df["duration"] = pd.to_numeric(df["duration"], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     df["flow_end_ts"] = df["ts"] + df["duration"]
-    df["window_id"] = (df["ts"] // window_seconds).astype(int)
+    if "window_id" not in df.columns:
+        df = compute_window_id(df, window_seconds)
     df["is_failed_conn"] = df["conn_state"].astype(str).isin(PORTSCAN_FAILED_STATES).astype(int)
 
     agg = (

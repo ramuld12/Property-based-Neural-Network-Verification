@@ -6,7 +6,13 @@ from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from thesis.data.features import filter_labels, make_attack_label_df, recompute_temporal_window_features
+from thesis.data.features import (
+    compute_portscan_window_features,
+    compute_time_elapsed,
+    compute_window_id,
+    filter_labels,
+    make_attack_label_df,
+)
 
 
 @dataclass
@@ -45,8 +51,9 @@ def prepare_labels(df: pd.DataFrame, config: dict) -> pd.DataFrame:
 
 
 def prepare_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
-    window_seconds = config["data"].get("portscan_window_seconds", 5.0)
-    return recompute_temporal_window_features(df, float(window_seconds))
+    window_seconds = config["data"].get("windows_seconds", 5.0)
+    df = compute_time_elapsed(df)
+    return compute_portscan_window_features(df, float(window_seconds))
 
 
 def group_labels(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
@@ -132,8 +139,10 @@ def split_experiment_frame(
 def load_experiment_data(config: dict) -> ExperimentData:
     data_cfg = config["data"]
     random_state = config["experiment"].get("seed", 42)
+    window_seconds = float(data_cfg.get("windows_seconds", 5.0))
 
     full_df = prepare_labels(read_tsv(data_cfg["train_path"]), config)
+    full_df = compute_window_id(full_df, window_seconds)
     train_df, val_df, test_df = split_experiment_frame(full_df, config, random_state)
     train_df = prepare_features(train_df, config)
     val_df = prepare_features(val_df, config)

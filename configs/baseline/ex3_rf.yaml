@@ -10,6 +10,7 @@ data:
   labels: [BENIGN, DOS_HTTP_FLOOD, PORTSCAN]
   test_size: 0.3
   val_size: 0.2
+  windows_seconds: 5.0
 
 model:
   type: random_forest

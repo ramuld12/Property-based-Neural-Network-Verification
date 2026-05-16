@@ -116,7 +116,7 @@ The saved run directory includes:
 
 ## Regenerate preprocessed TSVs
 
-The generate the preprocessed datasets the process differs a bit for each one:
+The generate the preprocessed datasets, run the xells in `data\zeek_preprocessing_pipeline.ipynb` after having processed the PCAPs. The process differs a bit for each one:
 
 ### CICIDS2017
 
@@ -136,7 +136,7 @@ Then run the labeling notebook at `data/CICIDS2017/label_cicids2017.ipynb`.
 
 ### CICIoT2023
 
-Download the CICIoT2023 PCAP files from CIC, then run the processing script in `data/CICIoT2023/` against one or more PCAP files:
+Download the CICIoT2023 PCAP files from CIC, then run the scripts in `label_ciciot2023_bad.sh` and `process_pcaps.sh` in `data/CICIoT2023/` against one or more PCAP files:
 
 ```bash
 ./process_pcaps.sh pcaps/file1.pcap pcaps/file2.pcap
@@ -149,4 +149,6 @@ If needed, make the script executable first:
 chmod +x process_pcaps.sh
 ```
 
-Then run the labeling notebook at `data/CICIoT2023/label_ciciot2023.ipynb`.
+For the "Bad" dataset, processing is finished.
+
+For the "Good" dataset, run the labeling notebook at `data/CICIoT2023/label_ciciot2023.ipynb`.
