@@ -134,12 +134,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
             debug_y,
             DEBUG_LABEL_PORTSCAN,
         )
-
-        # if epoch > 3:
         grad_norm.balance(ce_loss, constraint_loss)
-        # else:
-        #     ce_loss.backward()
-        #     optimizer.step()
 
         totals["ce_loss"] += ce_loss.item()
 

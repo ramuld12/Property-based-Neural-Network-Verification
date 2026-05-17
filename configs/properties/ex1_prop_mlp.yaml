@@ -29,7 +29,7 @@ properties:
   pgd_steps: 10
   pgd_restarts: 1
   pgd_step_size: 0.01
-  frozen_features: [valid_tcp_handshake, valid_http_conn, time_elapsed, orig_byte_rate, orig_pkt_rate, uniq_dst_ports, pkts_per_port, scan_duration, fail_ratio]
+  frozen_features: [valid_tcp_handshake, valid_http_conn, time_elapsed, uniq_dst_ports, pkts_per_port, scan_duration, fail_ratio]
 
 attack_specs:
   dos_http_flood:
@@ -37,8 +37,6 @@ attack_specs:
     valid_pkt_size_total_min: 250
     mal_time_elapsed_min: 0.0
     mal_time_elapsed_max: 1.0
-    mal_byte_rate_min: 700.0
-    mal_pkt_rate_min: 5.0
   portscan:
     mal_uniq_dst_ports_min: 50.0
     mal_pkts_per_port_max: 10.0
