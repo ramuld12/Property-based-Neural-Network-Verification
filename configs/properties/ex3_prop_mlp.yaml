@@ -23,8 +23,8 @@ model:
 
 properties:
   logic: dl2
-  lambda_dos: 0.25
-  lambda_scan: 0.25
+  lambda_dos: 0.5
+  lambda_scan: 0.5
   pgd_steps: 10
   pgd_restarts: 1
   pgd_step_size: 0.01
@@ -35,11 +35,11 @@ attack_specs:
     valid_packet_size_individual_min: 40.0
     valid_pkt_size_total_min: 250
     mal_time_elapsed_min: 0.0
-    mal_time_elapsed_max: 120.0
-    mal_byte_rate_min: 200.0
+    mal_time_elapsed_max: 1.0
+    mal_byte_rate_min: 700.0
     mal_pkt_rate_min: 5.0
   portscan:
-    mal_uniq_dst_ports_min: 20.0
+    mal_uniq_dst_ports_min: 50.0
     mal_pkts_per_port_max: 10.0
     mal_scan_duration_max: 5.0
     mal_fail_ratio_min: 0.75
