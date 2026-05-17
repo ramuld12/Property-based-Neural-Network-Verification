@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv
+import sys
 from pathlib import Path
 from statistics import mean
 
@@ -70,10 +71,10 @@ def aggregate_row_values(runs):
         fmt(mean(cross_values[key])) for key in ordered
     ]
 
-def print_aggregate_rows(experiments):
+def print_aggregate_rows(output_root, experiments):
     print("% Overall aggregate rows")
     for experiment in experiments:
-        root = Path("outputs/different_features") / experiment
+        root = output_root / experiment
         exp_label = experiment.upper().replace("EX", "E")
 
         for dataset_label, dataset_key in DATASETS:
@@ -99,8 +100,8 @@ def print_aggregate_rows(experiments):
         if experiment != experiments[-1]:
             print(r"        \hline")
 
-def print_per_class_rows(experiment):
-    root = Path("outputs/different_features") / experiment
+def print_per_class_rows(output_root, experiment):
+    root = output_root / experiment
     classes = CLASSES[experiment]
     exp_label = experiment.upper().replace("EX", "E")
 
@@ -145,10 +146,11 @@ def print_per_class_rows(experiment):
             print(r"        \hline")
 
 if __name__ == "__main__":
+    output_root = Path(sys.argv[1])
     experiments = ["ex1", "ex2", "ex3", "ex4"]
-    print_aggregate_rows(experiments)
+    print_aggregate_rows(output_root, experiments)
     print()
 
     for experiment in experiments:
-        print_per_class_rows(experiment)
+        print_per_class_rows(output_root, experiment)
         print()
