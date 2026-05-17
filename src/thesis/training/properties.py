@@ -135,11 +135,11 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
             DEBUG_LABEL_PORTSCAN,
         )
 
-        if epoch > 3:
-            grad_norm.balance(ce_loss, constraint_loss)
-        else:
-            ce_loss.backward()
-            optimizer.step()
+        # if epoch > 3:
+        grad_norm.balance(ce_loss, constraint_loss)
+        # else:
+        #     ce_loss.backward()
+        #     optimizer.step()
 
         totals["ce_loss"] += ce_loss.item()
 
@@ -149,16 +149,24 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
     return metrics
 
 
-def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=None) -> tuple[dict, np.ndarray, np.ndarray]:
+def evaluate_property_model(
+    model,
+    loader,
+    ctx: PropertyTrainingContext,
+    ce_fn=None,
+    collect_debug_stats: bool = False,
+) -> tuple[dict, np.ndarray, np.ndarray]:
     model.eval()
     y_true, y_pred = [], []
     totals = {"adv_dos_loss": 0.0, "adv_scan_loss": 0.0, "adv_dos_sat": 0.0, "adv_scan_sat": 0.0}
     counts = {"dos": 0, "scan": 0}
     ce_losses = []
+    dos_debug_stats, scan_debug_stats = {}, {}
 
     for x, y, debug_y in loader:
         x = x.to(ctx.device)
         y = y.to(ctx.device)
+        debug_y = debug_y.to(ctx.device)
         with torch.no_grad():
             logits = model(x[:, : ctx.model_feature_count])
             preds = logits.argmax(dim=1)
@@ -173,6 +181,16 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
         totals["adv_dos_loss"] += loss.item()
         totals["adv_dos_sat"] += sat.item()
         counts["dos"] += x.size(0)
+        if collect_debug_stats:
+            update_debug_stats_for_subtype(
+                dos_debug_stats,
+                ctx.constraints["dos"],
+                model,
+                x,
+                x_adv_dos,
+                debug_y,
+                DEBUG_LABEL_DOS_HTTP_FLOOD,
+            )
 
         x_adv_scan = make_consistent_adversarial(model, ctx.oracle, x, ctx.constraints["scan"])
         with torch.no_grad():
@@ -180,6 +198,16 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
         totals["adv_scan_loss"] += loss.item()
         totals["adv_scan_sat"] += sat.item()
         counts["scan"] += x.size(0)
+        if collect_debug_stats:
+            update_debug_stats_for_subtype(
+                scan_debug_stats,
+                ctx.constraints["scan"],
+                model,
+                x,
+                x_adv_scan,
+                debug_y,
+                DEBUG_LABEL_PORTSCAN,
+            )
 
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
@@ -195,6 +223,9 @@ def evaluate_property_model(model, loader, ctx: PropertyTrainingContext, ce_fn=N
     }
     if ce_fn is not None:
         metrics["ce_loss"] = float(np.mean(ce_losses))
+    if collect_debug_stats:
+        metrics["dos_debug_stats"] = dos_debug_stats
+        metrics["scan_debug_stats"] = scan_debug_stats
     return metrics, y_true, y_pred
 
 

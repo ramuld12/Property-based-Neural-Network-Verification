@@ -10,7 +10,7 @@ from thesis.models.torch_models import build_model
 from thesis.properties.constraints import build_constraints
 from thesis.results.metrics import classification_outputs, save_eval_outputs
 from thesis.results.plotting import plot_eval_summary
-from thesis.training.properties import evaluate_property_model, train_property_classifier
+from thesis.training.properties import evaluate_property_model, print_rule_stats, train_property_classifier
 
 
 def run_properties(config: dict):
@@ -63,9 +63,27 @@ def run_properties(config: dict):
     plot_eval_summary(metrics, report_df, cm, data.labels, "Property model test", run_dir / "test" / "confusion_matrix.png")
 
     if data.cross_eval_loader is not None:
-        cross_metrics, y_true, y_pred = evaluate_property_model(model, data.cross_eval_loader, ctx)
+        cross_metrics, y_true, y_pred = evaluate_property_model(
+            model,
+            data.cross_eval_loader,
+            ctx,
+            collect_debug_stats=True,
+        )
+        dos_debug_stats = cross_metrics.pop("dos_debug_stats", {})
+        scan_debug_stats = cross_metrics.pop("scan_debug_stats", {})
         metrics, report_df, cm = classification_outputs(y_true, y_pred, data.labels)
         metrics.update(cross_metrics)
+        print(
+            "\n----- CROSS EVAL -----\n"
+            f"attack_f1={metrics['attack_macro_f1']:.4f} "
+            f"acc={metrics['acc']:.4f} "
+            f"adv_dos_loss={metrics['adv_dos_loss']:.4f} "
+            f"adv_dos_sat={metrics['adv_dos_sat']:.4f} "
+            f"adv_scan_loss={metrics['adv_scan_loss']:.4f} "
+            f"adv_scan_sat={metrics['adv_scan_sat']:.4f}"
+        )
+        print_rule_stats("DoS HTTP Flood", dos_debug_stats)
+        print_rule_stats("Portscan", scan_debug_stats)
         save_eval_outputs(run_dir / "cross_eval", metrics, report_df, cm, data.labels)
         plot_eval_summary(metrics, report_df, cm, data.labels, "Property model cross eval", run_dir / "cross_eval" / "confusion_matrix.png")
 
