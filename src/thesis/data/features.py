@@ -15,8 +15,6 @@ FLOW_NUMERIC_FEATURES = [
 ]
 
 ENGINEERED_FEATURES = [
-    "orig_pkt_rate",
-    "orig_byte_rate",
     "time_elapsed",
     "valid_tcp_handshake",
     "valid_http_conn",
@@ -33,8 +31,6 @@ DEFAULT_PROPERTY_FROZEN_FEATURES = [
     "valid_tcp_handshake",
     "valid_http_conn",
     "time_elapsed",
-    "orig_byte_rate",
-    "orig_pkt_rate",
     "uniq_dst_ports",
     "pkts_per_port",
     "scan_duration",
