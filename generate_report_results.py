@@ -6,12 +6,12 @@ from statistics import mean
 
 MODELS = [
     ("Random Forest", lambda root, ds: root / "baseline" / f"rf_to_ciciot2023_{ds}"),
-    ("Baseline MLP", lambda root, ds: root / "baseline" / f"mlp_to_ciciot2023_{ds}"),
-    ("Gödel MLP", lambda root, ds: root / "properties" / "goedel" / ds),
-    ("Łukasiewicz MLP", lambda root, ds: root / "properties" / "lukasiewicz" / ds),
-    ("Reichenbach MLP", lambda root, ds: root / "properties" / "reichenbach" / ds),
-    ("Yager MLP", lambda root, ds: root / "properties" / "yager" / ds),
-    ("DL2 MLP", lambda root, ds: root / "properties" / "dl2" / ds),
+    ("Baseline ", lambda root, ds: root / "baseline" / f"mlp_to_ciciot2023_{ds}"),
+    ("Gödel ", lambda root, ds: root / "properties" / "goedel" / ds),
+    ("Łukasiewicz ", lambda root, ds: root / "properties" / "lukasiewicz" / ds),
+    ("Reichenbach ", lambda root, ds: root / "properties" / "reichenbach" / ds),
+    ("Yager ", lambda root, ds: root / "properties" / "yager" / ds),
+    ("DL2 ", lambda root, ds: root / "properties" / "dl2" / ds),
 ]
 
 DATASETS = [
