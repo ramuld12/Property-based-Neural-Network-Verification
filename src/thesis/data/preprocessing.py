@@ -9,7 +9,6 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from thesis.data.features import BOOLEAN_FEATURES
-from thesis.properties.specs import make_scaled_attack_specs
 
 DEBUG_LABEL_OTHER = 0
 DEBUG_LABEL_DOS_HTTP_FLOOD = 1
@@ -31,7 +30,7 @@ class PropertyData:
     model_feature_count: int
     labels: list[str]
     scaler: MinMaxScaler
-    scaled_attack_specs: dict
+    attack_specs: dict
     scale_cols: list[str]
     clip_lower: pd.Series
     clip_upper: pd.Series
@@ -147,7 +146,7 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
         model_feature_count=len(feature_cols),
         labels=config["data"]["labels"],
         scaler=scaler,
-        scaled_attack_specs=make_scaled_attack_specs(config["attack_specs"], scaler, scale_cols),
+        attack_specs=config["attack_specs"],
         scale_cols=scale_cols,
         clip_lower=clip_lower,
         clip_upper=clip_upper,

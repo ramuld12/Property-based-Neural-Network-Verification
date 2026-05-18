@@ -25,7 +25,7 @@ def run_properties(config: dict):
     constraints = build_constraints(
         feature_cols=data.tensor_features,
         labels=data.labels,
-        scaled_attack_specs=data.scaled_attack_specs,
+        attack_specs=data.attack_specs,
         preconditions=config["preconditions"],
         device=device,
         scaler=data.scaler,

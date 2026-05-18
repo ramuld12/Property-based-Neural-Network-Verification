@@ -37,20 +37,19 @@ def make_weighted_ce_loss(train_df: pd.DataFrame, device: torch.device) -> nn.Cr
 
 def build_logic(name: str):
     name = name.lower()
-    if name == "goedel":
-        return logics.GoedelFuzzyLogic()
-    elif name == "boolean":
-        return logics.BooleanLogic()
-    elif name == "dl2":
-        return logics.DL2()
-    elif name == "lukasiewicz":
-        return logics.LukasiewiczFuzzyLogic()
-    elif name == "reichenbach":
-        return logics.ReichenbachFuzzyLogic() 
-    elif name == "yager":
-        return logics.YagerFuzzyLogic()
-    elif name == "stl":
-        return logics.STL()
+    logic_classes = {
+        "goedel": logics.GoedelFuzzyLogic,
+        "boolean": logics.BooleanLogic,
+        "dl2": logics.DL2,
+        "lukasiewicz": logics.LukasiewiczFuzzyLogic,
+        "reichenbach": logics.ReichenbachFuzzyLogic,
+        "yager": logics.YagerFuzzyLogic,
+        "stl": logics.STL,
+    }
+    try:
+        return logic_classes[name]()
+    except KeyError as exc:
+        raise ValueError(f"Unknown logic: {name}") from exc
 
 
 def precondition_bounds(precondition, x):

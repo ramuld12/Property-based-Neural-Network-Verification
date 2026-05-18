@@ -19,15 +19,15 @@ def valid_input_bounds(x):
     return ((x >= 0.0) & (x <= 1.0)).all(dim=1)
 
 
-def raw_col(x_col, col, scaler, scale_cols):
-    i = scale_cols.index(col)
+def raw_col(x_col, col, scaler, scale_idx):
+    i = scale_idx[col]
     min_ = torch.tensor(scaler.data_min_[i], device=x_col.device, dtype=x_col.dtype)
     max_ = torch.tensor(scaler.data_max_[i], device=x_col.device, dtype=x_col.dtype)
     return x_col * (max_ - min_ + 1e-8) + min_
 
 
-def scaled_col(raw_value, col, scaler, scale_cols):
-    i = scale_cols.index(col)
+def scaled_col(raw_value, col, scaler, scale_idx):
+    i = scale_idx[col]
     min_ = torch.tensor(scaler.data_min_[i], device=raw_value.device, dtype=raw_value.dtype)
     max_ = torch.tensor(scaler.data_max_[i], device=raw_value.device, dtype=raw_value.dtype)
     return (raw_value - min_) / (max_ - min_ + 1e-8)
@@ -85,31 +85,36 @@ class GlobalBoundsPrecondition:
         return self.get_bounds(x)
 
 
-class DoSHttpFloodPostcondition(Postcondition):
+class ScaledFeatureMixin:
+    def init_scaling(self, scaler, scale_idx):
+        self.scaler = scaler
+        self.scale_idx = scale_idx
+
+    def raw_col(self, x_col, col):
+        return raw_col(x_col, col, self.scaler, self.scale_idx)
+
+    def scale_col(self, raw_value, col):
+        return scaled_col(raw_value, col, self.scaler, self.scale_idx)
+
+    def scaled_threshold(self, reference, raw_value, col):
+        return self.scale_col(torch.full_like(reference, raw_value), col)
+
+
+class DoSHttpFloodPostcondition(ScaledFeatureMixin, Postcondition):
     def __init__(
         self,
         idx,
         class_idx,
         dos_http_flood_specs,
         scaler,
-        scale_cols,
+        scale_idx,
         model_feature_count,
     ):
         self.idx = idx
         self.class_idx = class_idx
         self.dos_http_flood_specs = dos_http_flood_specs
-        self.scaler = scaler
-        self.scale_cols = scale_cols
+        self.init_scaling(scaler, scale_idx)
         self.model_feature_count = model_feature_count
-
-    def raw_col(self, x_col, col):
-        return raw_col(x_col, col, self.scaler, self.scale_cols)
-
-    def scale_col(self, raw_value, col):
-        return scaled_col(raw_value, col, self.scaler, self.scale_cols)
-
-    def scaled_threshold(self, reference, raw_value, col):
-        return self.scale_col(torch.full_like(reference, raw_value), col)
 
     def raw_time_elapsed(self, x):
         return self.raw_col(x[:, self.idx["time_elapsed"]], "time_elapsed")
@@ -179,23 +184,13 @@ class DoSHttpFloodPostcondition(Postcondition):
         return parts
 
 
-class PortscanPostcondition(Postcondition):
-    def __init__(self, idx, class_idx, portscan_specs, scaler, scale_cols, model_feature_count):
+class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
+    def __init__(self, idx, class_idx, portscan_specs, scaler, scale_idx, model_feature_count):
         self.idx = idx
         self.class_idx = class_idx
         self.portscan_specs = portscan_specs
-        self.scaler = scaler
-        self.scale_cols = scale_cols
+        self.init_scaling(scaler, scale_idx)
         self.model_feature_count = model_feature_count
-
-    def raw_col(self, x_col, col):
-        return raw_col(x_col, col, self.scaler, self.scale_cols)
-
-    def scale_col(self, raw_value, col):
-        return scaled_col(raw_value, col, self.scaler, self.scale_cols)
-
-    def scaled_threshold(self, reference, raw_value, col):
-        return self.scale_col(torch.full_like(reference, raw_value), col)
 
     def round_ste(self, value):
         return value + (torch.round(value) - value).detach()
@@ -299,7 +294,7 @@ def pick_precondition_config(preconditions: dict, key: str) -> dict:
 def build_constraints(
     feature_cols: list[str],
     labels: list[str],
-    scaled_attack_specs: dict,
+    attack_specs: dict,
     preconditions: dict,
     device,
     scaler,
@@ -308,6 +303,7 @@ def build_constraints(
     frozen_feature_names=None,
 ):
     idx = {name: i for i, name in enumerate(feature_cols)}
+    scale_idx = {name: i for i, name in enumerate(scale_cols)}
     unknown_features = sorted(set(frozen_feature_names or []) - set(idx))
     if unknown_features:
         raise ValueError(f"Unknown frozen_features: {unknown_features}")
@@ -333,9 +329,9 @@ def build_constraints(
             postcondition=DoSHttpFloodPostcondition(
                 idx=idx,
                 class_idx=dos_target,
-                dos_http_flood_specs=scaled_attack_specs["dos_http_flood"],
+                dos_http_flood_specs=attack_specs["dos_http_flood"],
                 scaler=scaler,
-                scale_cols=scale_cols,
+                scale_idx=scale_idx,
                 model_feature_count=model_feature_count,
             ),
         ),
@@ -345,9 +341,9 @@ def build_constraints(
             postcondition=PortscanPostcondition(
                 idx=idx,
                 class_idx=scan_target,
-                portscan_specs=scaled_attack_specs["portscan"],
+                portscan_specs=attack_specs["portscan"],
                 scaler=scaler,
-                scale_cols=scale_cols,
+                scale_idx=scale_idx,
                 model_feature_count=model_feature_count,
             ),
         ),

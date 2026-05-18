@@ -22,4 +22,6 @@ class MLP(nn.Module):
 
 
 def build_model(model_type: str, n_features: int, num_classes: int) -> nn.Module:
+    if model_type != "mlp":
+        raise ValueError(f"Unknown torch model type: {model_type}")
     return MLP(n_features=n_features, num_classes=num_classes)

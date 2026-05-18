@@ -33,7 +33,7 @@ def main() -> None:
 
             run_properties(config)
 
-    if args.command == "evaluate":
+    elif args.command == "evaluate":
         evaluate_run(args.run, args.cross_data)
 
 
