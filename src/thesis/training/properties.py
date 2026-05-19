@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -46,6 +47,8 @@ def build_logic(name: str):
         "yager": logics.YagerFuzzyLogic,
         "stl": logics.STL,
     }
+    if hasattr(logics, "QLL"):
+        logic_classes["qll"] = logics.QLL
     try:
         return logic_classes[name]()
     except KeyError as exc:
@@ -106,7 +109,6 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
 
         x_adv_dos = make_consistent_adversarial(model, oracle, x, ctx.constraints["dos"])
         dos_loss, dos_sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="mean")
-        constraint_loss = constraint_loss + ctx.lambda_dos * dos_loss
         totals["scaled_dos_loss"] += ctx.lambda_dos * dos_loss.item()
         totals["dos_sat"] += dos_sat.item()
         update_debug_stats_for_subtype(
@@ -121,7 +123,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
 
         x_adv_scan = make_consistent_adversarial(model, oracle, x, ctx.constraints["scan"])
         scan_loss, scan_sat = ctx.constraints["scan"].eval(model, x, x_adv_scan, None, ctx.logic, reduction="mean")
-        constraint_loss = constraint_loss + ctx.lambda_scan * scan_loss
+        constraint_loss = ctx.lambda_dos * dos_loss + ctx.lambda_scan * scan_loss
         totals["scaled_scan_loss"] += ctx.lambda_scan * scan_loss.item()
         totals["scan_sat"] += scan_sat.item()
         update_debug_stats_for_subtype(
@@ -256,8 +258,10 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
     min_epochs = config["model"].get("min_epochs", 1)
 
     for epoch in range(1, config["model"]["epochs"] + 1):
+        epoch_start = time.perf_counter()
         train_metrics = train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, data.train_loader, ctx, epoch)
         val_metrics, _, _ = evaluate_property_model(model, data.val_loader, ctx, ce_fn=ce_fn)
+        epoch_seconds = time.perf_counter() - epoch_start
         score = model_selection_score(val_metrics)
         improved = score > best_score + min_delta
         if improved:
@@ -273,6 +277,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             **{f"train_{k}": v for k, v in train_metrics.items() if not k.endswith("_stats")},
             **{f"val_{k}": v for k, v in val_metrics.items()},
             "selection_score": score,
+            "epoch_seconds": epoch_seconds,
         })
         print( 
             f"epoch={epoch} \n" 
@@ -291,6 +296,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             f"adv_scan_sat={val_metrics['adv_scan_sat']:.4f} \n" 
             f"score={score:.4f} "
             f"best_score={best_score:.4f} "
+            f"epoch_time={epoch_seconds:.2f}s "
             f"patience={epochs_without_improvement}/{patience}" 
         )
         print_rule_stats("DoS HTTP Flood", train_metrics["dos_debug_stats"])

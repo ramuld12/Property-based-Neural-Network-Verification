@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import time
 
 import numpy as np
 import pandas as pd
@@ -31,6 +32,7 @@ def train_torch_classifier(model, train_loader, val_loader, config: dict, device
     history = []
 
     for epoch in range(1, config["model"]["epochs"] + 1):
+        epoch_start = time.perf_counter()
         model.train()
         train_losses = []
         train_true, train_pred = [], []
@@ -63,6 +65,7 @@ def train_torch_classifier(model, train_loader, val_loader, config: dict, device
         val_loss = float(np.mean(val_losses))
         val_acc = float((np.asarray(y_true) == np.asarray(y_pred)).mean())
         val_attack_f1 = float(f1_score(y_true, y_pred, labels=attack_ids, average="macro", zero_division=0))
+        epoch_seconds = time.perf_counter() - epoch_start
         improved = improved_attack_f1_or_loss(val_attack_f1, best_attack_f1, val_loss, best_loss, min_delta)
         if improved:
             best_attack_f1 = val_attack_f1
@@ -79,6 +82,7 @@ def train_torch_classifier(model, train_loader, val_loader, config: dict, device
             "val_loss": val_loss,
             "val_acc": val_acc,
             "val_attack_macro_f1": val_attack_f1,
+            "epoch_seconds": epoch_seconds,
         })
         print(
             f"epoch={epoch} "
@@ -87,6 +91,7 @@ def train_torch_classifier(model, train_loader, val_loader, config: dict, device
             f"val_loss={val_loss:.4f} "
             f"val_acc={val_acc:.4f} "
             f"val_attack_f1={val_attack_f1:.4f} "
+            f"epoch_time={epoch_seconds:.2f}s "
             f"patience={epochs_without_improvement}/{patience}"
         )
 

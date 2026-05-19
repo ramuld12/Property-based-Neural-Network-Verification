@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import numpy as np
 import torch
 from sklearn.ensemble import RandomForestClassifier
@@ -57,6 +59,7 @@ def run_baseline(config: dict):
     if data.y_cross_eval is not None:
         print_split_counts("cross_eval", data.labels, data.y_cross_eval)
 
+    runtime_metrics = None
     if model_type == "random_forest":
         n_estimators = config["model"].get("n_estimators", 100)
         n_jobs = config["model"].get("n_jobs", 1)
@@ -71,7 +74,11 @@ def run_baseline(config: dict):
             n_jobs=n_jobs,
         )
         print("fitting random forest...")
+        fit_start = time.perf_counter()
         model.fit(data.x_train, data.y_train)
+        fit_seconds = time.perf_counter() - fit_start
+        runtime_metrics = {"fit_seconds": fit_seconds}
+        print(f"fit_time={fit_seconds:.2f}s")
         train_acc = float((model.predict(data.x_train) == data.y_train).mean())
         print(f"train_acc={train_acc:.4f}")
         print("predicting test...")
@@ -108,6 +115,8 @@ def run_baseline(config: dict):
     save_eval_outputs(run_dir / "test", metrics, report_df, cm, data.labels)
     plot_eval_summary(metrics, report_df, cm, data.labels, "Baseline test", run_dir / "test" / "confusion_matrix.png")
     summary_metrics = {"test": metrics}
+    if runtime_metrics is not None:
+        summary_metrics["runtime"] = runtime_metrics
 
     if cross_pred is not None:
         metrics, report_df, cm = classification_outputs(data.y_cross_eval, cross_pred, data.labels)
