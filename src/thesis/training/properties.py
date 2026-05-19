@@ -46,9 +46,8 @@ def build_logic(name: str):
         "reichenbach": logics.ReichenbachFuzzyLogic,
         "yager": logics.YagerFuzzyLogic,
         "stl": logics.STL,
+        "qll": logics.QLL,
     }
-    if hasattr(logics, "QLL"):
-        logic_classes["qll"] = logics.QLL
     try:
         return logic_classes[name]()
     except KeyError as exc:

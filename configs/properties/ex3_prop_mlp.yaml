@@ -50,4 +50,4 @@ preconditions:
       upper_bound: 1.0
 
 output:
-  root: outputs/3class
+  root: outputs/qll

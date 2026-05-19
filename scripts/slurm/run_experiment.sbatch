@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=ciciot_yager
-#SBATCH --output=outputs/ex1/baseline/%x_%j.out
-#SBATCH --error=outputs/slurm/%x_%j.err
+#SBATCH --job-name=qll
+#SBATCH --output=outputs/test/%x_%j.out
+#SBATCH --error=outputs/test/%x_%j.err
 #SBATCH --time=08:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
@@ -25,7 +25,7 @@ module load Anaconda3  # Load anaconda
 # Init anaconda (in the HPC, prefer to use the following instead of 'conda init')
 eval "$(conda shell.bash hook)"
 
-ENV_NAME='thesis'
+ENV_NAME='qll'
 
 conda activate $ENV_NAME
 echo "Python version: $(python --version)"
@@ -33,4 +33,4 @@ echo "Python version: $(python --version)"
 python -c "import torch; print('CUDA:', torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 
 
-python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH" --set properties.logic=yager --set experiment.name=3class_ciciot_yager
+python -m thesis.cli run "$METHOD" --config "$CONFIG_PATH" --set properties.logic=qll --set experiment.name=qll_ex3
