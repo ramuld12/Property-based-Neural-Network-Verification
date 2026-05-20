@@ -17,7 +17,7 @@ echo "Running on $(hostname)"
 echo "Working directory: $(pwd)"
 nvidia-smi
 
-SWEEP_FILE="configs/properties/qll_tests_bad.txt"
+SWEEP_FILE="configs/properties/qll_tests_good.txt"
 LINE_NUMBER=$((SLURM_ARRAY_TASK_ID + 1))
 COMMAND=$(grep -v '^[[:space:]]*$' "$SWEEP_FILE" | sed -n "${LINE_NUMBER}p")
 
