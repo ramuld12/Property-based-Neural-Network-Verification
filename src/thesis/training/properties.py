@@ -11,7 +11,6 @@ import torch.nn as nn
 import property_driven_ml.logics as logics
 import property_driven_ml.training as pml_training
 from sklearn.metrics import f1_score
-from thesis.training.gradnorm import GradNorm
 
 from thesis.data.preprocessing import DEBUG_LABEL_DOS_HTTP_FLOOD, DEBUG_LABEL_PORTSCAN
 
@@ -103,7 +102,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
         x = x.to(ctx.device)
         y = y.to(ctx.device)
         debug_y = debug_y.to(ctx.device)
-        optimizer.zero_grad(set_to_none=True)
+        optimizer.zero_grad()
         ce_loss = ce_fn(model(x[:, : ctx.model_feature_count]), y)
         constraint_loss = torch.tensor(0.0, device=ctx.device)
 
@@ -123,6 +122,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
 
         x_adv_scan = make_consistent_adversarial(model, oracle, x, ctx.constraints["scan"])
         scan_loss, scan_sat = ctx.constraints["scan"].eval(model, x, x_adv_scan, None, ctx.logic, reduction="mean")
+        constraint_loss = ctx.lambda_dos * dos_loss + ctx.lambda_scan * scan_loss
         totals["scaled_scan_loss"] += ctx.lambda_scan * scan_loss.item()
         totals["scan_sat"] += scan_sat.item()
         update_debug_stats_for_subtype(
@@ -134,9 +134,6 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
             debug_y,
             DEBUG_LABEL_PORTSCAN,
         )
-        dos_loss = torch.clamp(dos_loss, min=0.0)
-        scan_loss = torch.clamp(scan_loss, min=0.0)  
-        constraint_loss = ctx.lambda_dos * dos_loss + ctx.lambda_scan * scan_loss    
         grad_norm.balance(ce_loss, constraint_loss)
 
         totals["ce_loss"] += ce_loss.item()
@@ -247,7 +244,7 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
         lambda_scan=prop_cfg["lambda_scan"],
     )
     optimizer = torch.optim.Adam(model.parameters(), lr=config["model"]["learning_rate"])
-    grad_norm = GradNorm(model, device, optimizer, lr=config["model"]["learning_rate"], alpha=1.5)
+    grad_norm = pml_training.GradNorm(model, device, optimizer, lr=config["model"]["learning_rate"], alpha=1.5)
     ce_fn = make_weighted_ce_loss(data.train_df, device)
 
     best_score = -float("inf")
