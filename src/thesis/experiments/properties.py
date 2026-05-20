@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 
 from thesis.data.datasets import load_experiment_data
-from thesis.data.features import DEFAULT_PROPERTY_FROZEN_FEATURES, SHARED_MODEL_FEATURES
+from thesis.data.features import SHARED_MODEL_FEATURES
 from thesis.data.preprocessing import fit_property_data
 from thesis.experiments.common import make_run_dir, save_json, save_model, save_run_config, set_seed
 from thesis.models.torch_models import build_model
@@ -21,7 +21,6 @@ def run_properties(config: dict):
 
     feature_cols = list(SHARED_MODEL_FEATURES)
     data = fit_property_data(load_experiment_data(config), config, feature_cols)
-    frozen_features = config["properties"].get("frozen_features", DEFAULT_PROPERTY_FROZEN_FEATURES)
     constraints = build_constraints(
         feature_cols=data.tensor_features,
         labels=data.labels,
@@ -31,7 +30,6 @@ def run_properties(config: dict):
         scaler=data.scaler,
         scale_cols=data.scale_cols,
         model_feature_count=data.model_feature_count,
-        frozen_feature_names=frozen_features,
     )
     model = build_model(config["model"]["type"], n_features=len(data.features), num_classes=len(data.labels))
     model, history, ctx, best_epoch, best_score = train_property_classifier(model, data, constraints, config, device)
@@ -44,7 +42,6 @@ def run_properties(config: dict):
             "model": model.cpu(),
             "features": data.features,
             "tensor_features": data.tensor_features,
-            "frozen_features": frozen_features,
             "labels": data.labels,
             "model_type": config["model"]["type"],
             "scaler": data.scaler,

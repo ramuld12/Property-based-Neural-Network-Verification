@@ -27,15 +27,6 @@ ENGINEERED_FEATURES = [
 BOOLEAN_FEATURES = ["valid_tcp_handshake", "valid_http_conn"]
 
 SHARED_MODEL_FEATURES = FLOW_NUMERIC_FEATURES + ENGINEERED_FEATURES
-DEFAULT_PROPERTY_FROZEN_FEATURES = [
-    "valid_tcp_handshake",
-    "valid_http_conn",
-    "time_elapsed",
-    "uniq_dst_ports",
-    "pkts_per_port",
-    "scan_duration",
-    "fail_ratio",
-]
 
 PORTSCAN_FAILED_STATES = {"S0", "REJ", "RSTO", "RSTR", "RSTOS0", "RSTRH", "SH", "SHR"}
 
