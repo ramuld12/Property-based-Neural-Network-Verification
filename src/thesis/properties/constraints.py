@@ -119,7 +119,7 @@ class DoSHttpFloodPostcondition(ScaledFeatureMixin, Postcondition):
     def raw_time_elapsed(self, x):
         return self.raw_col(x[:, self.idx["time_elapsed"]], "time_elapsed")
 
-    def build_postcondition(self, N, x, x_adv):
+    def get_postcondition(self, N, x, x_adv):
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
         time_elapsed = x[:, self.idx["time_elapsed"]]
@@ -227,7 +227,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
         fail_ratio = self.raw_col(x_consistent[:, self.idx["fail_ratio"]], "fail_ratio")
         return uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration
 
-    def build_postcondition(self, N, x, x_adv):
+    def get_postcondition(self, N, x, x_adv):
         x_consistent = self.consistent_adv(x, x_adv)
         uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
         scaled_uniq_dst_ports = self.scale_col(uniq_dst_ports, "uniq_dst_ports")
