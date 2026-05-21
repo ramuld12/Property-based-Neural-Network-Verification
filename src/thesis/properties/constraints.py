@@ -50,10 +50,10 @@ def implies(logic, antecedent_violations, consequent):
     return logic.OR(*antecedent_violations, consequent)
 
 
-class FrozenFeaturePrecondition:
-    def __init__(self, precondition, frozen_indices):
+class FixedAuxiliaryPrecondition:
+    def __init__(self, precondition, auxiliary_indices):
         self.precondition = precondition
-        self.frozen_indices = frozen_indices
+        self.auxiliary_indices = auxiliary_indices
 
     def get_bounds(self, x):
         if hasattr(self.precondition, "get_bounds"):
@@ -62,8 +62,8 @@ class FrozenFeaturePrecondition:
             lo, hi = self.precondition.get_precondition(x)
         lo = lo.clone()
         hi = hi.clone()
-        lo[..., self.frozen_indices] = x[..., self.frozen_indices]
-        hi[..., self.frozen_indices] = x[..., self.frozen_indices]
+        lo[..., self.auxiliary_indices] = x[..., self.auxiliary_indices]
+        hi[..., self.auxiliary_indices] = x[..., self.auxiliary_indices]
         return lo, hi
 
     def get_precondition(self, x):
@@ -300,19 +300,15 @@ def build_constraints(
     scaler,
     scale_cols,
     model_feature_count,
-    frozen_feature_names=None,
 ):
     idx = {name: i for i, name in enumerate(feature_cols)}
     scale_idx = {name: i for i, name in enumerate(scale_cols)}
-    unknown_features = sorted(set(frozen_feature_names or []) - set(idx))
-    if unknown_features:
-        raise ValueError(f"Unknown frozen_features: {unknown_features}")
-    frozen_indices = sorted(set([idx[name] for name in (frozen_feature_names or [])] + list(range(model_feature_count, len(feature_cols)))))
+    auxiliary_indices = list(range(model_feature_count, len(feature_cols)))
     label_to_idx = {label: i for i, label in enumerate(labels)}
     dos_precondition = build_precondition(pick_precondition_config(preconditions, "dos_http_flood"), device)
     scan_precondition = build_precondition(pick_precondition_config(preconditions, "portscan"), device)
-    dos_precondition = FrozenFeaturePrecondition(dos_precondition, frozen_indices)
-    scan_precondition = FrozenFeaturePrecondition(scan_precondition, frozen_indices)
+    dos_precondition = FixedAuxiliaryPrecondition(dos_precondition, auxiliary_indices)
+    scan_precondition = FixedAuxiliaryPrecondition(scan_precondition, auxiliary_indices)
 
     attack_target = label_to_idx["ATTACK"] if "ATTACK" in label_to_idx else None
     dos_target = label_to_idx.get("DOS_HTTP_FLOOD", attack_target)

@@ -17,6 +17,9 @@ matplotlib
 joblib
 seaborn
 pyyaml~=6.0.3
+onnx
+onnxscript
+maraboupy
 
 ## Install the property-driven-ml package directly from GitHub, the latest version is required for GlobalBounds precondition
 git+https://github.com/tflinkow/property-driven-ml.git
