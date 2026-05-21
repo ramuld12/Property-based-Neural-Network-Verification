@@ -21,12 +21,4 @@ def apply_overrides(config: dict, overrides: list[str]) -> dict:
 
 
 def parse_value(value: str):
-    if value.lower() in {"true", "false"}:
-        return value.lower() == "true"
-    try:
-        return int(value)
-    except ValueError:
-        try:
-            return float(value)
-        except ValueError:
-            return value
+    return yaml.safe_load(value)

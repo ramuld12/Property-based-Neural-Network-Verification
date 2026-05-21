@@ -56,8 +56,8 @@ def run_baseline(config: dict):
     print_split_counts("train", data.labels, data.y_train)
     print_split_counts("val", data.labels, data.y_val)
     print_split_counts("test", data.labels, data.y_test)
-    if data.y_cross_eval is not None:
-        print_split_counts("cross_eval", data.labels, data.y_cross_eval)
+    for cross_eval in data.cross_evals:
+        print_split_counts(f"cross:{cross_eval.name}", data.labels, cross_eval.y)
 
     runtime_metrics = None
     if model_type == "random_forest":
@@ -83,20 +83,20 @@ def run_baseline(config: dict):
         print(f"train_acc={train_acc:.4f}")
         print("predicting test...")
         y_pred = model.predict(data.x_test)
-        cross_pred = None
-        if data.x_cross_eval is not None:
-            print("predicting cross_eval...")
-            cross_pred = model.predict(data.x_cross_eval)
+        cross_preds = []
+        for cross_eval in data.cross_evals:
+            print(f"predicting cross_eval: {cross_eval.name}...")
+            cross_preds.append((cross_eval, model.predict(cross_eval.x)))
     else:
         train_loader, val_loader, test_loader = torch_loaders_from_arrays(data, config["model"]["batch_size"])
         model = build_model(model_type, n_features=len(data.features), num_classes=len(data.labels))
         model, history = train_torch_classifier(model, train_loader, val_loader, config, device)
         history.to_csv(run_dir / "training_history.csv", index=False)
         y_pred = predict_torch(model, test_loader, device)
-        cross_pred = None
-        if data.x_cross_eval is not None:
-            loader = _array_loader(data.x_cross_eval, np.zeros(len(data.x_cross_eval), dtype=np.int64), config["model"]["batch_size"])
-            cross_pred = predict_torch(model, loader, device)
+        cross_preds = []
+        for cross_eval in data.cross_evals:
+            loader = _array_loader(cross_eval.x, np.zeros(len(cross_eval.x), dtype=np.int64), config["model"]["batch_size"])
+            cross_preds.append((cross_eval, predict_torch(model, loader, device)))
 
     save_model(
         run_dir / "model.joblib",
@@ -118,12 +118,16 @@ def run_baseline(config: dict):
     if runtime_metrics is not None:
         summary_metrics["runtime"] = runtime_metrics
 
-    if cross_pred is not None:
-        metrics, report_df, cm = classification_outputs(data.y_cross_eval, cross_pred, data.labels)
-        print_metric_summary("cross eval", metrics)
-        save_eval_outputs(run_dir / "cross_eval", metrics, report_df, cm, data.labels)
-        plot_eval_summary(metrics, report_df, cm, data.labels, "Baseline cross eval", run_dir / "cross_eval" / "confusion_matrix.png")
-        summary_metrics["cross_eval"] = metrics
+    for cross_eval, cross_pred in cross_preds:
+        metrics, report_df, cm = classification_outputs(cross_eval.y, cross_pred, data.labels)
+        print_metric_summary(f"cross eval: {cross_eval.name}", metrics)
+        cross_eval_dir = run_dir / "cross_eval" if cross_eval.name == "cross_eval" else run_dir / "cross_eval" / cross_eval.name
+        save_eval_outputs(cross_eval_dir, metrics, report_df, cm, data.labels)
+        plot_eval_summary(metrics, report_df, cm, data.labels, f"Baseline cross eval: {cross_eval.name}", cross_eval_dir / "confusion_matrix.png")
+        if cross_eval.name == "cross_eval":
+            summary_metrics["cross_eval"] = metrics
+        else:
+            summary_metrics.setdefault("cross_eval", {})[cross_eval.name] = metrics
 
     save_json(run_dir / "metrics.json", summary_metrics)
 

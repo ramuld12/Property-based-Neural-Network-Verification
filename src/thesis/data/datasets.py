@@ -16,15 +16,40 @@ from thesis.data.features import (
 
 
 @dataclass
+class CrossEvalData:
+    name: str
+    path: Path
+    frame: pd.DataFrame
+
+
+@dataclass
 class ExperimentData:
     train: pd.DataFrame
     val: pd.DataFrame
     test: pd.DataFrame
-    cross_eval: pd.DataFrame | None
+    cross_evals: list[CrossEvalData]
 
 
 def read_tsv(path: str | Path) -> pd.DataFrame:
     return pd.read_csv(path, on_bad_lines="skip", delimiter="\t")
+
+
+def cross_eval_paths(config: dict) -> list[Path]:
+    paths = config["data"].get("cross_eval_path", [])
+    if not isinstance(paths, list):
+        raise TypeError("data.cross_eval_path must be a list, e.g. [data/ciciot2023_preprocessed_good.tsv].")
+    return [Path(path) for path in paths]
+
+
+def cross_eval_name(path: Path, used_names: set[str]) -> str:
+    base_name = path.stem
+    name = base_name
+    counter = 2
+    while name in used_names:
+        name = f"{base_name}_{counter}"
+        counter += 1
+    used_names.add(name)
+    return name
 
 
 def attack_source_labels(config: dict) -> list[str]:
@@ -93,13 +118,21 @@ def load_experiment_data(config: dict) -> ExperimentData:
     val_df = prepare_features(val_df, config)
     test_df = prepare_features(test_df, config)
 
-    cross_eval = None
-    if data_cfg.get("cross_eval_path"):
-        cross_eval = prepare_features(prepare_labels(read_tsv(data_cfg["cross_eval_path"]), config), config)
+    paths = cross_eval_paths(config)
+    used_names = set()
+    cross_evals = []
+    for path in paths:
+        cross_evals.append(
+            CrossEvalData(
+                name=cross_eval_name(path, used_names) if len(paths) > 1 else "cross_eval",
+                path=path,
+                frame=prepare_features(prepare_labels(read_tsv(path), config), config).reset_index(drop=True),
+            )
+        )
 
     return ExperimentData(
         train=train_df.reset_index(drop=True),
         val=val_df.reset_index(drop=True),
         test=test_df.reset_index(drop=True),
-        cross_eval=None if cross_eval is None else cross_eval.reset_index(drop=True),
+        cross_evals=cross_evals,
     )

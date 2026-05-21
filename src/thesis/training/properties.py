@@ -152,7 +152,7 @@ def evaluate_property_model(
 ) -> tuple[dict, np.ndarray, np.ndarray]:
     model.eval()
     y_true, y_pred = [], []
-    totals = {"adv_dos_loss": 0.0, "adv_scan_loss": 0.0, "adv_dos_sat": 0.0, "adv_scan_sat": 0.0}
+    totals = {"adv_dos_loss": 0.0, "adv_scan_loss": 0.0, "csec_dos": 0.0, "csec_scan": 0.0}
     counts = {"dos": 0, "scan": 0}
     ce_losses = []
     dos_debug_stats, scan_debug_stats = {}, {}
@@ -173,7 +173,7 @@ def evaluate_property_model(
         with torch.no_grad():
             loss, sat = ctx.constraints["dos"].eval(model, x, x_adv_dos, None, ctx.logic, reduction="sum")
         totals["adv_dos_loss"] += loss.item()
-        totals["adv_dos_sat"] += sat.item()
+        totals["csec_dos"] += sat.item()
         counts["dos"] += x.size(0)
         if collect_debug_stats:
             update_debug_stats_for_subtype(
@@ -190,7 +190,7 @@ def evaluate_property_model(
         with torch.no_grad():
             loss, sat = ctx.constraints["scan"].eval(model, x, x_adv_scan, None, ctx.logic, reduction="sum")
         totals["adv_scan_loss"] += loss.item()
-        totals["adv_scan_sat"] += sat.item()
+        totals["csec_scan"] += sat.item()
         counts["scan"] += x.size(0)
         if collect_debug_stats:
             update_debug_stats_for_subtype(
@@ -212,8 +212,8 @@ def evaluate_property_model(
         "attack_macro_f1": float(f1_score(y_true, y_pred, labels=attack_ids, average="macro", zero_division=0)),
         "adv_dos_loss": totals["adv_dos_loss"] / max(counts["dos"], 1),
         "adv_scan_loss": totals["adv_scan_loss"] / max(counts["scan"], 1),
-        "adv_dos_sat": totals["adv_dos_sat"] / max(counts["dos"], 1),
-        "adv_scan_sat": totals["adv_scan_sat"] / max(counts["scan"], 1),
+        "csec_dos": totals["csec_dos"] / max(counts["dos"], 1),
+        "csec_scan": totals["csec_scan"] / max(counts["scan"], 1),
     }
     if ce_fn is not None:
         metrics["ce_loss"] = float(np.mean(ce_losses))
@@ -224,7 +224,7 @@ def evaluate_property_model(
 
 
 def model_selection_score(metrics: dict) -> float:
-    return 2.0 * metrics["attack_macro_f1"] + 0.5 * metrics["macro_f1"] + 0.5 * metrics["adv_dos_sat"] + 0.5 * metrics["adv_scan_sat"] + 0.5 * metrics["acc"]
+    return 2.0 * metrics["attack_macro_f1"] + 0.5 * metrics["macro_f1"] + 0.5 * metrics["csec_dos"] + 0.5 * metrics["csec_scan"] + 0.5 * metrics["acc"]
 
 
 def train_property_classifier(model, data, constraints: dict, config: dict, device):
@@ -289,9 +289,9 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             f"attack_f1={val_metrics['attack_macro_f1']:.4f} " 
             f"acc={val_metrics['acc']:.4f} " 
             f"adv_dos_loss={val_metrics['adv_dos_loss']:.4f} " 
-            f"adv_dos_sat={val_metrics['adv_dos_sat']:.4f} " 
+            f"csec_dos={val_metrics['csec_dos']:.4f} "
             f"adv_scan_loss={val_metrics['adv_scan_loss']:.4f} " 
-            f"adv_scan_sat={val_metrics['adv_scan_sat']:.4f} \n" 
+            f"csec_scan={val_metrics['csec_scan']:.4f} \n"
             f"score={score:.4f} "
             f"best_score={best_score:.4f} "
             f"epoch_time={epoch_seconds:.2f}s "

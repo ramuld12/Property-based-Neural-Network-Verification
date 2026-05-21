@@ -59,10 +59,10 @@ def run_properties(config: dict):
     save_eval_outputs(run_dir / "test", metrics, report_df, cm, data.labels)
     plot_eval_summary(metrics, report_df, cm, data.labels, "Property model test", run_dir / "test" / "confusion_matrix.png")
 
-    if data.cross_eval_loader is not None:
+    for cross_eval in data.cross_evals:
         cross_metrics, y_true, y_pred = evaluate_property_model(
             model,
-            data.cross_eval_loader,
+            cross_eval.loader,
             ctx,
             collect_debug_stats=True,
         )
@@ -71,18 +71,19 @@ def run_properties(config: dict):
         metrics, report_df, cm = classification_outputs(y_true, y_pred, data.labels)
         metrics.update(cross_metrics)
         print(
-            "\n----- CROSS EVAL -----\n"
+            f"\n----- CROSS EVAL: {cross_eval.name} -----\n"
             f"attack_f1={metrics['attack_macro_f1']:.4f} "
             f"acc={metrics['acc']:.4f} "
             f"adv_dos_loss={metrics['adv_dos_loss']:.4f} "
-            f"adv_dos_sat={metrics['adv_dos_sat']:.4f} "
+            f"csec_dos={metrics['csec_dos']:.4f} "
             f"adv_scan_loss={metrics['adv_scan_loss']:.4f} "
-            f"adv_scan_sat={metrics['adv_scan_sat']:.4f}"
+            f"csec_scan={metrics['csec_scan']:.4f}"
         )
         print_rule_stats("DoS HTTP Flood", dos_debug_stats)
         print_rule_stats("Portscan", scan_debug_stats)
-        save_eval_outputs(run_dir / "cross_eval", metrics, report_df, cm, data.labels)
-        plot_eval_summary(metrics, report_df, cm, data.labels, "Property model cross eval", run_dir / "cross_eval" / "confusion_matrix.png")
+        cross_eval_dir = run_dir / "cross_eval" if cross_eval.name == "cross_eval" else run_dir / "cross_eval" / cross_eval.name
+        save_eval_outputs(cross_eval_dir, metrics, report_df, cm, data.labels)
+        plot_eval_summary(metrics, report_df, cm, data.labels, f"Property model cross eval: {cross_eval.name}", cross_eval_dir / "confusion_matrix.png")
 
     print(f"Run saved to: {run_dir}")
     return run_dir

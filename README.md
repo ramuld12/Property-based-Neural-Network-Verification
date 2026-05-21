@@ -52,8 +52,23 @@ python -m thesis.cli run properties \
   --set experiment.seed=1 \
   --set output.root=outputs/ex1/properties/dl2/mlp_cicids2017_to_ciciot2023 \
   --set data.train_path=data/cicids2017_preprocessed.tsv \
-  --set data.cross_eval_path=data/ciciot2023_preprocessed.tsv \
+  --set data.cross_eval_path=[data/ciciot2023_preprocessed.tsv] \
   --set properties.logic=dl2
+```
+
+`data.cross_eval_path` is always a list. Use one entry for a single external dataset, or multiple entries when the same trained model should be evaluated on several external datasets:
+
+```yaml
+data:
+  cross_eval_path:
+    - data/ciciot2023_preprocessed_good.tsv
+    - data/ciciot2023_preprocessed_bad.tsv
+```
+
+CLI overrides should also pass a list:
+
+```bash
+--set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv]
 ```
 
 ## Experiment definitions
@@ -111,8 +126,21 @@ The saved run directory includes:
 - `test/classification_report.csv`: per-class precision, recall, F1, support, and per-label accuracy.
 - `test/confusion_matrix.csv`: test confusion matrix.
 - `test/confusion_matrix.png`: plotted evaluation summary.
-- `cross_eval/`: equivalent outputs for the cross-dataset evaluation when `data.cross_eval_path` is configured.
+- `cross_eval/`: equivalent outputs for the cross-dataset evaluation. A one-item `data.cross_eval_path` list writes to `cross_eval/`; multiple entries write below `cross_eval/<dataset_stem>/`.
 - `training_history.csv`: epoch history for MLP and property-driven runs.
+
+## CSat reports
+
+After training a property-driven MLP, generate a formal constraint-satisfaction report with:
+
+```bash
+python scripts/report_csat.py \
+  --model outputs/path/to/model.joblib \
+  --out outputs/path/to/csat_report.md \
+  --json-out outputs/path/to/csat_results.json
+```
+
+The report uses Marabou to search for global rule counterexamples over the normalized input box and summarizes the resulting CSat scores in Markdown.
 
 ## Regenerate preprocessed TSVs
 
