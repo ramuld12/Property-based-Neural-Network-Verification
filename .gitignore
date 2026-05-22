@@ -159,11 +159,12 @@ outputs/
 # Ignore pcap files
 *.pcap
 **/pcaps/
-data/CICIoT2023/*.csv
 
 # Zeek logs and TSVs
 *.log
 *.tsv
+# Exvept small datasets
+!*_small*.tsv
 
 pcap2csv/*
 pcap2csv.zip
