@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 #SBATCH --job-name=ex3_prop
 #SBATCH --output=outputs/ex3/properties/slurm/%x_task-%a_job-%A.out
 #SBATCH --error=outputs/ex3/properties/slurm/%x_task-%a_job-%A.err
@@ -53,4 +53,3 @@ echo "Run stderr: $RUN_STDERR"
 echo "Running: $COMMAND"
 
 eval "$COMMAND" >"$RUN_STDOUT" 2>"$RUN_STDERR"
-
