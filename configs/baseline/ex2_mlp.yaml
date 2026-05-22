@@ -1,6 +1,5 @@
 experiment:
   name: mlp_ciciot2023_to_cicids2017
-  method: baseline
   task: binary
   seed: 42
 

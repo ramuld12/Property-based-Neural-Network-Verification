@@ -80,7 +80,6 @@ The config files are the source of truth for experiment settings, and the same k
 Common experiment keys:
 
 - `experiment.name`: run name used in the output directory.
-- `experiment.method`: configured method, usually matching the CLI method.
 - `experiment.task`: task label such as `binary` or `multiclass`.
 - `experiment.seed`: random seed.
 - `output.root`: root directory for generated run outputs.

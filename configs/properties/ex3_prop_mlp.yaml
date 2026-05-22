@@ -1,6 +1,5 @@
 experiment:
   name: properties_multiclass_cicids2017_to_ciciot2023
-  method: properties
   task: multiclass
   seed: 42
 
