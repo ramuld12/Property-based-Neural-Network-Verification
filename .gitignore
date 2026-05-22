@@ -169,5 +169,4 @@ outputs/
 pcap2csv/*
 pcap2csv.zip
 withProperties/grid_results/best_property_model.joblib
-.venv-thesis-marabou/
 final_lambda_exp/

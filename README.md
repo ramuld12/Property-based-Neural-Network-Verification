@@ -19,11 +19,13 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+
 The project expects these preprocessed input files to exist:
 
 ```text
 data/cicids2017_preprocessed.tsv
-data/ciciot2023_preprocessed.tsv
+data/ciciot2023_preprocessed_good.tsv
+data/ciciot2023_preprocessed_bad.tsv
 ```
 
 Small versions are also present for quick checks, but the experiment command grids use the full TSV files.
@@ -52,7 +54,7 @@ python -m thesis.cli run properties \
   --set experiment.seed=1 \
   --set output.root=outputs/ex1/properties/dl2/mlp_cicids2017_to_ciciot2023 \
   --set data.train_path=data/cicids2017_preprocessed.tsv \
-  --set data.cross_eval_path=[data/ciciot2023_preprocessed.tsv] \
+  --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv] \
   --set properties.logic=dl2
 ```
 
@@ -71,14 +73,60 @@ CLI overrides should also pass a list:
 --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv]
 ```
 
+## Config parameters
+
+The config files are the source of truth for experiment settings, and the same keys can be overridden with `--set`.
+
+Common experiment keys:
+
+- `experiment.name`: run name used in the output directory.
+- `experiment.method`: configured method, usually matching the CLI method.
+- `experiment.task`: task label such as `binary` or `multiclass`.
+- `experiment.seed`: random seed.
+- `output.root`: root directory for generated run outputs.
+
+Data keys:
+
+- `data.train_path`: preprocessed TSV used for training, validation, and test splits.
+- `data.cross_eval_path`: list of preprocessed TSVs for cross-dataset evaluation.
+- `data.labels`: class labels to train and evaluate.
+- `data.attack_source_labels`: source attack labels collapsed into generic `ATTACK` for binary or mixed tasks.
+- `data.test_size`: held-out test fraction.
+- `data.val_size`: validation fraction taken from the training split.
+- `data.windows_seconds`: window size used by the dataset loader.
+
+Model keys:
+
+- `model.type`: `random_forest` or `mlp` for baseline runs; property-driven runs use `mlp`.
+- `model.n_estimators`: number of trees for `random_forest`.
+- `model.n_jobs`: parallel workers for `random_forest`.
+- `model.batch_size`: batch size for `mlp` training and prediction.
+- `model.learning_rate`: Adam learning rate for `mlp`.
+- `model.epochs`: maximum training epochs for `mlp`.
+- `model.patience`: early-stopping patience.
+- `model.min_epochs`: minimum epochs before early stopping in property-driven training.
+- `model.min_delta`: minimum validation improvement for early stopping.
+
+Property-driven keys:
+
+- `properties.logic`: one of `goedel`, `boolean`, `dl2`, `lukasiewicz`, `reichenbach`, `yager`, or `stl`.
+- `properties.lambda_dos`: weight for the DoS_HTTP_flood constraint loss.
+- `properties.lambda_scan`: weight for the PORTSCAN constraint loss.
+- `properties.pgd_steps`: PGD steps for adversarial constraint search.
+- `properties.pgd_restarts`: PGD restarts for adversarial constraint search.
+- `properties.pgd_step_size`: PGD step size.
+- `attack_specs.dos_http_flood.*`: thresholds for the DoS_HTTP_flood property.
+- `attack_specs.portscan.*`: thresholds for the portscan property.
+- `preconditions.*`: property precondition definitions. The current configs use `GlobalBounds`.
+
 ## Experiment definitions
 
 - `ex1`: binary `BENIGN` vs `ATTACK`, where `ATTACK` contains `DOS_HTTP_FLOOD` and `PORTSCAN`.
-- `ex2`: binary `BENIGN` vs `ATTACK`, where `ATTACK` contains `XSS`, `SQL_INJECTION`, and `BRUTE_FORCE`.
+- `ex2`: binary `BENIGN` vs `ATTACK`, where `ATTACK` contains `DOS_HTTP_FLOOD`, `PORTSCAN`, `XSS`, `SQL_INJECTION`, and `BRUTE_FORCE`.
 - `ex3`: three-class classification with `BENIGN`, `DOS_HTTP_FLOOD`, and `PORTSCAN`.
-- `ex4`: mixed specific/generic classification with `BENIGN`, `DOS_HTTP_FLOOD`, `PORTSCAN`, and generic `ATTACK`.
+- `ex4`: mixed specific/generic classification with `BENIGN`, `DOS_HTTP_FLOOD`, `PORTSCAN`, and generic `ATTACK` consisting of `XSS`, `SQL_INJECTION`, and `BRUTE_FORCE`.
 
-Baseline configs exist for random forest and MLP models. Property configs currently use the MLP model with property constraints for DoS HTTP flood and portscan behavior.
+Baseline configs exist for random forest and MLP models.
 
 ## Recreate results
 
@@ -93,21 +141,31 @@ configs/baseline/ex3_baseline_commands.txt
 configs/baseline/ex4_baseline_commands.txt
 ```
 
-Each baseline grid contains 40 commands: random forest and MLP, two train/cross-evaluation directions, and 10 seeds per setting.
-
 Property grids:
 
 ```text
-configs/properties/ex1_prop_commands.txt
-configs/properties/ex2_prop_commands.txt
-configs/properties/ex3_prop_commands.txt
-configs/properties/ex4_prop_commands.txt
+configs/properties/ex1_prop.txt
+configs/properties/ex2_prop.txt
+configs/properties/ex3_prop.txt
+configs/properties/ex4_prop.txt
 ```
-
-Each property grid contains 30 commands: five logics, two train/cross-evaluation directions, and three seeds per setting.
 
 
 To recreate all baseline results, run the four baseline command grids. To recreate all property-driven results, run the four property command grids. These runs can take a long time because each command trains a model and writes a separate timestamped output directory.
+
+## Evaluate an existing run
+
+The CLI also exposes an evaluation command:
+
+```bash
+python -m thesis.cli evaluate --run outputs/path/to/run
+python -m thesis.cli evaluate --run outputs/path/to/run --cross-data configs/path/to/cross_data.yaml
+```
+
+- `--run`: required path to an existing run directory.
+- `--cross-data`: optional path for a requested cross-data config.
+
+The current implementation only prints the requested paths and does not recompute metrics yet.
 
 ## Outputs
 
@@ -129,22 +187,10 @@ The saved run directory includes:
 - `cross_eval/`: equivalent outputs for the cross-dataset evaluation. A one-item `data.cross_eval_path` list writes to `cross_eval/`; multiple entries write below `cross_eval/<dataset_stem>/`.
 - `training_history.csv`: epoch history for MLP and property-driven runs.
 
-## CSat reports
-
-After training a property-driven MLP, generate a formal constraint-satisfaction report with:
-
-```bash
-python scripts/report_csat.py \
-  --model outputs/path/to/model.joblib \
-  --out outputs/path/to/csat_report.md \
-  --json-out outputs/path/to/csat_results.json
-```
-
-The report uses Marabou to search for global rule counterexamples over the normalized input box and summarizes the resulting CSat scores in Markdown.
 
 ## Regenerate preprocessed TSVs
 
-The generate the preprocessed datasets, run the xells in `data\zeek_preprocessing_pipeline.ipynb` after having processed the PCAPs. The process differs a bit for each one:
+To generate the preprocessed datasets, run the cells in `data/zeek_preprocessing_pipeline.ipynb` after having processed the PCAPs. The process differs a bit for each one:
 
 ### CICIDS2017
 
