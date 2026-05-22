@@ -67,7 +67,9 @@ def compute_time_elapsed(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)
     df = df.sort_values(["id.orig_h", "id.resp_h", "ts"]).reset_index(drop=True)
-    df["time_elapsed"] = df.groupby(["id.orig_h", "id.resp_h"])["ts"].diff().fillna(999999.0)
+    # First-in-pair flows have no previous timestamp; property configs use a
+    # tiny positive lower bound when they need to exclude this default.
+    df["time_elapsed"] = df.groupby(["id.orig_h", "id.resp_h"])["ts"].diff().fillna(0.0)
     return df
 
 

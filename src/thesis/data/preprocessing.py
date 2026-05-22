@@ -10,6 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from thesis.data.features import BOOLEAN_FEATURES
+from thesis.data.datasets import prepare_features, prepare_labels, read_tsv
 
 DEBUG_LABEL_OTHER = 0
 DEBUG_LABEL_DOS_HTTP_FLOOD = 1
@@ -64,6 +65,9 @@ class BaselineData:
     features: list[str]
     labels: list[str]
     scaler: MinMaxScaler
+    scale_cols: list[str]
+    clip_lower: pd.Series
+    clip_upper: pd.Series
 
 
 def make_loader(df: pd.DataFrame, feature_cols: list[str], batch_size: int, shuffle: bool = False) -> DataLoader:
@@ -113,6 +117,54 @@ def add_property_aux_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _coerce_numeric(df: pd.DataFrame, cols: list[str]) -> None:
+    df[cols] = df[cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+
+def transform_baseline_cross_eval(
+    path: Path,
+    config: dict,
+    features: list[str],
+    scaler: MinMaxScaler,
+    scale_cols: list[str],
+    clip_lower: pd.Series,
+    clip_upper: pd.Series,
+) -> BaselineCrossEvalData:
+    df = prepare_features(prepare_labels(read_tsv(path), config), config).reset_index(drop=True)
+    _coerce_numeric(df, features)
+    df[scale_cols] = df[scale_cols].clip(lower=clip_lower, upper=clip_upper, axis=1)
+    df[scale_cols] = scaler.transform(df[scale_cols])
+    return BaselineCrossEvalData(
+        name=path.stem,
+        path=path,
+        x=df[features].to_numpy(dtype=np.float32),
+        y=df["label_id"].to_numpy(dtype=np.int64),
+    )
+
+
+def transform_property_cross_eval(
+    path: Path,
+    config: dict,
+    tensor_features: list[str],
+    scaler: MinMaxScaler,
+    scale_cols: list[str],
+    clip_lower: pd.Series,
+    clip_upper: pd.Series,
+) -> PropertyCrossEvalData:
+    batch_size = config["model"]["batch_size"]
+    df = prepare_features(prepare_labels(read_tsv(path), config), config).reset_index(drop=True)
+    df = add_property_aux_columns(df)
+    _coerce_numeric(df, scale_cols)
+    df[scale_cols] = df[scale_cols].clip(lower=clip_lower, upper=clip_upper, axis=1)
+    df[scale_cols] = scaler.transform(df[scale_cols])
+    return PropertyCrossEvalData(
+        name=path.stem,
+        path=path,
+        df=df,
+        loader=make_loader(df, tensor_features, batch_size),
+    )
+
+
 def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyData:
     batch_size = config["model"]["batch_size"]
     train_df = data.train.copy()
@@ -132,7 +184,7 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
     ]
 
     for df in frames:
-        df[scale_cols] = df[scale_cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        _coerce_numeric(df, scale_cols)
 
     clip_lower = train_df[scale_cols].quantile(0.01)
     clip_upper = train_df[scale_cols].quantile(0.99)
@@ -188,7 +240,7 @@ def fit_baseline_data(data, config: dict, feature_cols: list[str]) -> BaselineDa
 
     scale_cols = [col for col in feature_cols if col not in BOOLEAN_FEATURES]
     for df in frames:
-        df[feature_cols] = df[feature_cols].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        _coerce_numeric(df, feature_cols)
 
     clip_lower = train_df[scale_cols].quantile(0.01)
     clip_upper = train_df[scale_cols].quantile(0.99)
@@ -226,6 +278,9 @@ def fit_baseline_data(data, config: dict, feature_cols: list[str]) -> BaselineDa
         features=feature_cols,
         labels=config["data"]["labels"],
         scaler=scaler,
+        scale_cols=scale_cols,
+        clip_lower=clip_lower,
+        clip_upper=clip_upper,
     )
 
 

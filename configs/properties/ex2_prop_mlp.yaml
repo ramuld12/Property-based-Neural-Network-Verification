@@ -33,7 +33,7 @@ attack_specs:
   dos_http_flood:
     valid_packet_size_individual_min: 40.0
     valid_pkt_size_total_min: 250
-    mal_time_elapsed_min: 0.0
+    mal_time_elapsed_min: 0.00000000001
     mal_time_elapsed_max: 0.5
   portscan:
     mal_uniq_dst_ports_min: 100.0

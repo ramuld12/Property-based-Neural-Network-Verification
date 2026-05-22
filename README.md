@@ -115,8 +115,20 @@ Property-driven keys:
 - `properties.pgd_restarts`: PGD restarts for adversarial constraint search.
 - `properties.pgd_step_size`: PGD step size.
 - `attack_specs.dos_http_flood.*`: thresholds for the DoS_HTTP_flood property.
+  - `valid_packet_size_individual_min`: minimum original bytes per original packet for a flow to count as having valid DoS packet sizing.
+  - `valid_pkt_size_total_min`: minimum total original bytes for a flow to count as having valid DoS traffic volume.
+  - `mal_time_elapsed_min`: minimum allowed elapsed time between related flows for the DoS HTTP flood condition. The current tiny positive value excludes first-in-pair rows whose `time_elapsed` defaults to `0.0`.
+  - `mal_time_elapsed_max`: maximum allowed elapsed time between related flows for the DoS HTTP flood condition.
 - `attack_specs.portscan.*`: thresholds for the portscan property.
+  - `mal_uniq_dst_ports_min`: minimum number of unique destination ports required for the portscan condition.
+  - `mal_pkts_per_port_max`: maximum packets per destination port for the portscan condition.
+  - `mal_scan_duration_max`: maximum scan duration for the portscan condition.
+  - `mal_fail_ratio_min`: minimum failed-connection ratio for the portscan condition.
 - `preconditions.*`: property precondition definitions. The current configs use `GlobalBounds`.
+  - `default.name`: precondition class used when no property-specific precondition is configured.
+  - `default.params.lower_bound`: lower bound for generated adversarial/property-search inputs.
+  - `default.params.upper_bound`: upper bound for generated adversarial/property-search inputs.
+  - `dos_http_flood` and `portscan`: optional property-specific precondition entries; when omitted, the property uses `preconditions.default`.
 
 ## Experiment definitions
 
@@ -154,17 +166,20 @@ To recreate all baseline results, run the four baseline command grids. To recrea
 
 ## Evaluate an existing run
 
-The CLI also exposes an evaluation command:
+Use the evaluation command to load a saved model and run post-hoc cross-dataset evaluation without retraining:
 
 ```bash
-python -m thesis.cli evaluate --run outputs/path/to/run
-python -m thesis.cli evaluate --run outputs/path/to/run --cross-data configs/path/to/cross_data.yaml
+python -m thesis.cli evaluate --model outputs/path/to/run/model.joblib
+python -m thesis.cli evaluate --model outputs/path/to/run/model.joblib --cross-data data/ciciot2023_preprocessed_good.tsv
+python -m thesis.cli evaluate --model outputs/path/to/run/model.joblib --cross-data data/ciciot2023_preprocessed_good.tsv data/ciciot2023_preprocessed_bad.tsv
 ```
 
-- `--run`: required path to an existing run directory.
-- `--cross-data`: optional path for a requested cross-data config.
+- `--model`: required path to an existing `model.joblib` file.
+- `--cross-data`: optional space-separated list of preprocessed TSV files to evaluate. If omitted, the command uses the saved run config's `data.cross_eval_path`.
 
-The current implementation only prints the requested paths and does not recompute metrics yet.
+This behaves like training-time cross evaluation: each dataset is labeled and feature-engineered with the saved run config, transformed with the saved clipping bounds and scaler from the model payload, then evaluated with the saved model. Results are written below `<model_parent>/cross_eval/<dataset_stem>/`.
+
+Older baseline models may need to be retrained before post-hoc evaluation if their saved `model.joblib` payload does not contain `scale_cols`, `clip_lower`, and `clip_upper`.
 
 ## Outputs
 
@@ -177,13 +192,13 @@ Each run writes to:
 The saved run directory includes:
 
 - `config.yaml`: the effective config after command-line overrides.
-- `model.joblib`: trained model and preprocessing artifacts.
+- `model.joblib`: trained model and preprocessing artifacts. New runs include the scaler, scale columns, and clipping bounds needed for post-hoc cross-dataset evaluation.
 - `metrics.json`: run-level metric summary.
 - `test/metrics.json`: test metrics.
 - `test/classification_report.csv`: per-class precision, recall, F1, support, and per-label accuracy.
 - `test/confusion_matrix.csv`: test confusion matrix.
 - `test/confusion_matrix.png`: plotted evaluation summary.
-- `cross_eval/`: equivalent outputs for the cross-dataset evaluation. A one-item `data.cross_eval_path` list writes to `cross_eval/`; multiple entries write below `cross_eval/<dataset_stem>/`.
+- `cross_eval/`: equivalent outputs for cross-dataset evaluation. Training-time single-dataset cross evaluation may write directly to `cross_eval/`; multiple datasets and post-hoc evaluation write below `cross_eval/<dataset_stem>/`.
 - `training_history.csv`: epoch history for MLP and property-driven runs.
 
 

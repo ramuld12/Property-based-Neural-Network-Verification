@@ -106,6 +106,9 @@ def run_baseline(config: dict):
             "labels": data.labels,
             "model_type": model_type,
             "scaler": data.scaler,
+            "scale_cols": data.scale_cols,
+            "clip_lower": data.clip_lower,
+            "clip_upper": data.clip_upper,
             "config": config,
         },
     )
