@@ -5,7 +5,9 @@ experiment:
 
 data:
   train_path: data/cicids2017_preprocessed.tsv
-  cross_eval_path: [data/ciciot2023_preprocessed_good.tsv]
+  cross_eval_path: 
+    - data/ciciot2023_preprocessed_small_good.tsv
+    - data/ciciot2023_preprocessed_small_bad.tsv
   labels: [BENIGN, ATTACK]
   attack_source_labels: [DOS_HTTP_FLOOD, PORTSCAN]
   test_size: 0.3

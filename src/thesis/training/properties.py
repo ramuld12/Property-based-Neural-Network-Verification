@@ -93,6 +93,30 @@ def update_debug_stats_for_subtype(stats: dict, constraint, model, x, x_adv, deb
         update_rule_stats(stats, constraint.postcondition.debug_parts(model, x[mask], x_adv[mask]))
 
 
+@torch.no_grad()
+def evaluate_test_csat(model, loader, ctx: PropertyTrainingContext) -> dict:
+    model.eval()
+    totals = {"dos": 0.0, "scan": 0.0}
+    counts = {"dos": 0, "scan": 0}
+
+    for x, _, _ in loader:
+        x = x.to(ctx.device)
+        dos_parts = ctx.constraints["dos"].postcondition.debug_parts(model, x, x)
+        dos_holds = (~dos_parts["antecedent_true"]) | dos_parts["prediction_ok"]
+        totals["dos"] += dos_holds.float().sum().item()
+        counts["dos"] += dos_holds.numel()
+
+        scan_parts = ctx.constraints["scan"].postcondition.debug_parts(model, x, x)
+        scan_holds = (~scan_parts["antecedent_true"]) | scan_parts["prediction_ok"]
+        totals["scan"] += scan_holds.float().sum().item()
+        counts["scan"] += scan_holds.numel()
+
+    return {
+        "csat_dos": totals["dos"] / max(counts["dos"], 1),
+        "csat_scan": totals["scan"] / max(counts["scan"], 1),
+    }
+
+
 def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: PropertyTrainingContext, epoch: int) -> dict:
     model.train()
     totals = {"ce_loss": 0.0, "scaled_dos_loss": 0.0, "scaled_scan_loss": 0.0, "dos_sat": 0.0, "scan_sat": 0.0}
@@ -138,6 +162,7 @@ def train_one_epoch(model, optimizer, grad_norm, oracle, ce_fn, loader, ctx: Pro
         totals["ce_loss"] += ce_loss.item()
 
     metrics = {key: value / len(loader) for key, value in totals.items()}
+    metrics.update(evaluate_test_csat(model, loader, ctx))
     metrics["dos_debug_stats"] = dos_debug_stats
     metrics["scan_debug_stats"] = scan_debug_stats
     return metrics
@@ -215,6 +240,7 @@ def evaluate_property_model(
         "csec_dos": totals["csec_dos"] / max(counts["dos"], 1),
         "csec_scan": totals["csec_scan"] / max(counts["scan"], 1),
     }
+    metrics.update(evaluate_test_csat(model, loader, ctx))
     if ce_fn is not None:
         metrics["ce_loss"] = float(np.mean(ce_losses))
     if collect_debug_stats:
@@ -284,14 +310,18 @@ def train_property_classifier(model, data, constraints: dict, config: dict, devi
             f"scaled_dos_loss={train_metrics['scaled_dos_loss']:.4f} " 
             f"scaled_scan_loss={train_metrics['scaled_scan_loss']:.4f} " 
             f"dos_sat={train_metrics['dos_sat']:.4f} " 
-            f"scan_sat={train_metrics['scan_sat']:.4f} \n " 
+            f"scan_sat={train_metrics['scan_sat']:.4f} "
+            f"csat_dos={train_metrics['csat_dos']:.4f} "
+            f"csat_scan={train_metrics['csat_scan']:.4f} \n " 
             f"----- VALIDATION -----\n" f"val_ce_loss={val_metrics['ce_loss']:.4f} "
             f"attack_f1={val_metrics['attack_macro_f1']:.4f} " 
             f"acc={val_metrics['acc']:.4f} " 
             f"adv_dos_loss={val_metrics['adv_dos_loss']:.4f} " 
             f"csec_dos={val_metrics['csec_dos']:.4f} "
             f"adv_scan_loss={val_metrics['adv_scan_loss']:.4f} " 
-            f"csec_scan={val_metrics['csec_scan']:.4f} \n"
+            f"csec_scan={val_metrics['csec_scan']:.4f} "
+            f"csat_dos={val_metrics['csat_dos']:.4f} "
+            f"csat_scan={val_metrics['csat_scan']:.4f} \n"
             f"score={score:.4f} "
             f"best_score={best_score:.4f} "
             f"epoch_time={epoch_seconds:.2f}s "

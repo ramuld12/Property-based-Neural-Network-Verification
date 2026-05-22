@@ -153,7 +153,18 @@ def _evaluate_properties(run_dir: Path, payload: dict, config: dict, paths: list
         metrics.update(cross_metrics)
         output_dir = run_dir / "cross_eval" / name
         save_eval_outputs(output_dir, metrics, report_df, cm, labels)
-        plot_eval_summary(metrics, report_df, cm, labels, f"Property post-hoc cross eval: {name}", output_dir / "confusion_matrix.png")
+        plot_eval_summary(metrics, report_df, cm, labels, f"Property cross eval: {name}", output_dir / "confusion_matrix.png")
+        print(
+            f"\n----- CROSS EVAL: {name} -----\n"
+            f"attack_f1={metrics['attack_macro_f1']:.4f} "
+            f"acc={metrics['acc']:.4f} "
+            f"adv_dos_loss={metrics['adv_dos_loss']:.4f} "
+            f"csec_dos={metrics['csec_dos']:.4f} "
+            f"adv_scan_loss={metrics['adv_scan_loss']:.4f} "
+            f"csec_scan={metrics['csec_scan']:.4f} "
+            f"csat_dos={metrics['csat_dos']:.4f} "
+            f"csat_scan={metrics['csat_scan']:.4f}"
+        )
         print(f"Saved property cross evaluation for {path} to: {output_dir}")
         print_rule_stats("DoS HTTP Flood", dos_debug_stats)
         print_rule_stats("Portscan", scan_debug_stats)

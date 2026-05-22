@@ -77,7 +77,9 @@ def run_properties(config: dict):
             f"adv_dos_loss={metrics['adv_dos_loss']:.4f} "
             f"csec_dos={metrics['csec_dos']:.4f} "
             f"adv_scan_loss={metrics['adv_scan_loss']:.4f} "
-            f"csec_scan={metrics['csec_scan']:.4f}"
+            f"csec_scan={metrics['csec_scan']:.4f} "
+            f"csat_dos={metrics['csat_dos']:.4f} "
+            f"csat_scan={metrics['csat_scan']:.4f}"
         )
         print_rule_stats("DoS HTTP Flood", dos_debug_stats)
         print_rule_stats("Portscan", scan_debug_stats)
