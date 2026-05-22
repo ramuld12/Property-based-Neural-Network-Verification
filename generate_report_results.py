@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv
+import json
 import re
 import argparse
 from dataclasses import dataclass
@@ -7,7 +8,6 @@ from pathlib import Path
 from statistics import mean
 
 EXPERIMENTS = ["ex1", "ex2", "ex3", "ex4"]
-PER_CLASS_EXPERIMENTS = ["ex4", "ex3", "ex2", "ex1"]
 
 MODELS = [
     ("rf", "Random Forest", False),
@@ -38,6 +38,8 @@ CLASS_LABELS = {
     "ATTACK": "ATTACK",
 }
 
+COMBINED_CLASSES = ["BENIGN", "PORTSCAN", "DOS_HTTP_FLOOD", "ATTACK"]
+
 
 @dataclass
 class ResultRow:
@@ -49,6 +51,7 @@ class ResultRow:
     lambda_label: str
     aggregate: list[float] | None
     per_class: list[float] | None
+    constraints: dict[str, float] | None
 
 
 def read_report(path):
@@ -159,6 +162,34 @@ def per_class_values(runs, classes):
     return values
 
 
+def constraint_values(runs):
+    dos_values, scan_values, attack_values = [], [], []
+
+    for run in runs:
+        path = run / "cross_eval" / "metrics.json"
+        if not path.exists():
+            continue
+
+        metrics = json.loads(path.read_text())
+        dos_value = metrics.get("adv_dos_sat")
+        scan_value = metrics.get("adv_scan_sat")
+        if dos_value is not None:
+            dos_values.append(float(dos_value))
+        if scan_value is not None:
+            scan_values.append(float(scan_value))
+        if dos_value is not None and scan_value is not None:
+            attack_values.append((float(dos_value) + float(scan_value)) / 2)
+
+    values = {}
+    if dos_values:
+        values["dos"] = mean(dos_values)
+    if scan_values:
+        values["scan"] = mean(scan_values)
+    if attack_values:
+        values["attack"] = mean(attack_values)
+    return values or None
+
+
 def baseline_folder(root, experiment, dataset_key, model_key):
     folder_name = {
         "rf": f"rf_to_ciciot2023_{dataset_key}",
@@ -182,7 +213,14 @@ def unique_existing(paths):
     return result
 
 
+def has_experiment_subdir(root, subdir):
+    return any((root / experiment / subdir).exists() for experiment in EXPERIMENTS)
+
+
 def discover_baseline_roots(output_root):
+    if has_experiment_subdir(output_root, "baseline"):
+        return [output_root]
+
     candidates = [
         output_root / "final_baselines",
         output_root.parent / "final_baselines",
@@ -198,11 +236,32 @@ def discover_baseline_roots(output_root):
 
 
 def discover_property_roots(output_root):
-    candidates = [output_root]
-    candidates.extend(
+    if lambda_from_root(output_root):
+        return [output_root]
+
+    if has_experiment_subdir(output_root, "properties"):
+        return [output_root]
+
+    final_roots = [
+        output_root,
+        output_root / "final_lambda_exp",
+        output_root.parent / "final_lambda_exp",
+        Path("outputs") / "final_lambda_exp",
+    ]
+    for root in final_roots:
+        if root.name == "final_lambda_exp" and root.exists():
+            return [
+                path
+                for path in sorted(root.glob("lambda_*"))
+                if lambda_from_root(path)
+            ]
+
+    candidates = [
         path for path in sorted(output_root.glob("lambda_*")) if lambda_from_root(path)
-    )
-    return unique_existing(candidates)
+    ]
+    if candidates:
+        return candidates
+    return [output_root] if output_root.exists() else []
 
 
 def choose_best_candidate(candidates):
@@ -257,6 +316,7 @@ def collect_rows(output_root):
                             "--",
                             None,
                             None,
+                            None,
                         )
                     )
                     continue
@@ -272,6 +332,7 @@ def collect_rows(output_root):
                         lambda_label,
                         aggregate,
                         per_class_values(runs, CLASSES[experiment]),
+                        constraint_values(runs),
                     )
                 )
 
@@ -297,34 +358,142 @@ def is_best(value, best):
     return fmt(value) == fmt(best)
 
 
-def print_overall_table(rows):
+def per_class_map(row):
+    if row.per_class is None:
+        return {}
+
+    classes = CLASSES[row.experiment]
+    return {
+        cls: (row.per_class[2 * index], row.per_class[2 * index + 1])
+        for index, cls in enumerate(classes)
+    }
+
+
+def combined_per_class_best(rows):
+    best = {}
+    for cls in COMBINED_CLASSES:
+        accs, f1s, csecs = [], [], []
+        for row in rows:
+            values = per_class_map(row).get(cls)
+            if values is not None:
+                accs.append(values[0])
+                f1s.append(values[1])
+
+            csec = constraint_value(row, cls)
+            if csec is not None:
+                csecs.append(csec)
+        if accs and f1s:
+            best[cls] = {"acc": max(accs), "f1": max(f1s)}
+        if csecs:
+            best.setdefault(cls, {})["csec"] = max(csecs)
+    return best
+
+
+def combined_per_class_values(row, best):
+    values_by_class = per_class_map(row)
+    cells = []
+    for cls in COMBINED_CLASSES:
+        values = values_by_class.get(cls)
+        if values is None:
+            cells.extend(["{-}", "{-}"])
+            if cls != "BENIGN":
+                cells.extend(["{-}", "{-}"])
+            continue
+
+        best_acc = best[cls]["acc"]
+        best_f1 = best[cls]["f1"]
+        cells.extend(
+            [
+                tex_num(values[0], is_best(values[0], best_acc)),
+                tex_num(values[1], is_best(values[1], best_f1)),
+            ]
+        )
+        if cls != "BENIGN":
+            cells.extend([constraint_cell(row, cls, best), "{}"])
+    return cells
+
+
+def constraint_cell(row, cls, best):
+    value = constraint_value(row, cls)
+    if value is None:
+        return "{-}"
+    best_value = best.get(cls, {}).get("csec")
+    return tex_num(value, best_value is not None and is_best(value, best_value))
+
+
+def constraint_value(row, cls):
+    if row.constraints is None:
+        return None
+    if row.experiment in {"ex1", "ex2"}:
+        if cls == "ATTACK" and "attack" in row.constraints:
+            return row.constraints["attack"]
+        return None
+    if row.experiment in {"ex3", "ex4"}:
+        if cls == "PORTSCAN" and "scan" in row.constraints:
+            return row.constraints["scan"]
+        if cls == "DOS_HTTP_FLOOD" and "dos" in row.constraints:
+            return row.constraints["dos"]
+    return None
+
+
+def print_combined_table(rows):
     print(r"\begin{table*}[p]")
-    print(r"\centering")
-    print(r"\footnotesize")
-    print(r"\setlength{\tabcolsep}{3.5pt}")
-    print(r"\renewcommand{\arraystretch}{0.90}")
-    print(r"\begin{adjustbox}{max totalsize={\textwidth}{0.96\textheight},center}")
-    print(r"\begin{tabular}{ll l cccc cccc}")
-    print(r"\toprule")
-    print(r"\multirow{2}{*}{\textbf{Exp.}} &")
-    print(r"\multirow{2}{*}{\textbf{Dataset}} &")
-    print(r"\multirow{2}{*}{\textbf{Logic}} &")
-    print(r"\multicolumn{4}{c}{\textbf{Training Results}} &")
-    print(r"\multicolumn{4}{c}{\textbf{Cross-Test Results}} \\")
-    print(r"\cmidrule(lr){4-7}")
-    print(r"\cmidrule(lr){8-11}")
-    print(r"& & & \textbf{Acc} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1}")
-    print(r"& \textbf{Acc} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} \\")
-    print(r"\midrule")
+    print(r"    \centering")
+    print(r"    \scriptsize")
+    print(r"    \setlength{\tabcolsep}{1.7pt}")
+    print(r"    \renewcommand{\arraystretch}{0.88}")
+    print(r"    \begin{adjustbox}{max totalsize={\textwidth}{0.96\textheight},center}")
+    print(
+        r"    \begin{tabular}{lll "
+        r"!{\color{black!25}\vrule width 0.35pt} cccc "
+        r"!{\color{black!25}\vrule width 0.35pt} cc "
+        r"!{\color{black!25}\vrule width 0.35pt} cccc "
+        r"!{\color{black!25}\vrule width 0.35pt} cccc "
+        r"!{\color{black!25}\vrule width 0.35pt} cccc}"
+    )
+    print(r"        \toprule")
+    print(r"        \multirow{3}{*}{\textbf{Exp.}}")
+    print(r"        & \multirow{3}{*}{\textbf{Dataset}}")
+    print(r"        & \multirow{3}{*}{\textbf{Logic}}")
+    print(r"        & \multicolumn{4}{c}{\textbf{Cross-Test Results}}")
+    print(r"        & \multicolumn{14}{c}{\textbf{Per-Class Cross-Test Results}} \\")
+    print(r"        \cmidrule(lr){4-7}")
+    print(r"        \cmidrule(lr){8-21}")
+    print(r"        & &")
+    print(r"        & \textbf{Acc} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1}")
+    print(r"        & \multicolumn{2}{c}{\textbf{BENIGN}}")
+    print(r"        & \multicolumn{4}{c}{\textbf{PORTSCAN}}")
+    print(r"        & \multicolumn{4}{c}{\textbf{DOS}}")
+    print(r"        & \multicolumn{4}{c}{\textbf{ATTACK}} \\")
+    print(r"        \cmidrule(lr){8-9}")
+    print(r"        \cmidrule(lr){10-13}")
+    print(r"        \cmidrule(lr){14-17}")
+    print(r"        \cmidrule(lr){18-21}")
+    print(r"        & &")
+    print(r"        & & & &")
+    print(r"        & \textbf{Acc} & \textbf{F1}")
+    print(r"        & \textbf{Acc} & \textbf{F1} & \textbf{CSec} & \textbf{CSat}")
+    print(r"        & \textbf{Acc} & \textbf{F1} & \textbf{CSec} & \textbf{CSat}")
+    print(r"        & \textbf{Acc} & \textbf{F1} & \textbf{CSec} & \textbf{CSat} \\")
+    print(r"        \midrule")
     print()
 
     for exp_index, experiment in enumerate(EXPERIMENTS):
         exp_label = experiment.upper().replace("EX", "E")
-        print(rf"\multirow{{14}}{{*}}{{{exp_label}}}")
+        print(rf"        \multirow{{14}}{{*}}{{{exp_label}}}")
 
         for dataset_index, (dataset_label, dataset_key) in enumerate(DATASETS):
             current_rows = block_rows(rows, experiment, dataset_key)
-            best = best_columns(current_rows, "aggregate")
+            aggregate_best = best_columns(current_rows, "aggregate")
+            per_class_best = combined_per_class_best(current_rows)
+            best_cross_f1 = max(
+                (
+                    row.aggregate[7]
+                    for row in current_rows
+                    if row.aggregate is not None
+                ),
+                default=None,
+            )
 
             for row_index, row in enumerate(current_rows):
                 exp_prefix = "" if dataset_index or row_index else ""
@@ -336,52 +505,90 @@ def print_overall_table(rows):
 
                 if row.aggregate is None:
                     print(
-                        f"{exp_prefix}{dataset_prefix} & {row.model_label} "
-                        r"& \multicolumn{8}{c}{No complete runs} \\"
+                        f"        {exp_prefix}{dataset_prefix} & {row.model_label} "
+                        r"& \multicolumn{18}{c}{No complete runs} \\"
                     )
                     continue
 
-                values = [
-                    tex_num(value, is_best(value, best[index]))
-                    for index, value in enumerate(row.aggregate)
+                logic_best = (
+                    best_cross_f1 is not None
+                    and fmt(row.aggregate[7]) == fmt(best_cross_f1)
+                )
+                logic_label = tex_logic(row.model_label, logic_best)
+                cross_values = [
+                    tex_num(value, is_best(value, aggregate_best[index]))
+                    for index, value in enumerate(row.aggregate[4:], start=4)
                 ]
+                per_class_values = combined_per_class_values(row, per_class_best)
                 print(
-                    f"{exp_prefix}{dataset_prefix} & {row.model_label} & "
-                    + " & ".join(values)
+                    f"        {exp_prefix}{dataset_prefix} & {logic_label} & "
+                    + " & ".join(cross_values + per_class_values)
                     + r" \\"
                 )
 
             if dataset_key == "good":
-                print(r"\cmidrule(lr){2-11}")
+                print(r"        \cmidrule(lr){2-21}")
 
         if exp_index != len(EXPERIMENTS) - 1:
             print()
-            print(r"\midrule")
+            print(r"        \midrule")
 
     print()
-    print(r"\bottomrule")
-    print(r"\end{tabular}")
-    print(r"\end{adjustbox}")
+    print(r"        \bottomrule")
+    print(r"    \end{tabular}")
+    print(r"    \end{adjustbox}")
     print(
-        r"\caption{Overall classification performance across experiments. "
-        r"Bold values indicate the best score within each test-dataset block for the corresponding metric.}"
+        r"    \caption{Overall and per-class classification performance across experiments with "
+        + lambda_caption(rows)
+        + r".}"
     )
-    print(r"\label{tab:overallResults}")
     print(r"\end{table*}")
 
 
+def print_overall_table(rows):
+    print_combined_table(rows)
+
+
 def per_class_column_spec(classes):
-    return "llc " + " ".join(["cc"] * len(classes))
+    return "ll " + " ".join(["cc"] * len(classes))
+
+
+def lambda_caption(rows, experiment=None):
+    labels = sorted(
+        {
+            row.lambda_label
+            for row in rows
+            if (experiment is None or row.experiment == experiment)
+            and row.lambda_label != "--"
+        }
+    )
+    if not labels:
+        return r"$\lambda=--$"
+    if len(labels) == 1:
+        return lambda_pair_caption(labels[0])
+    return (
+        r"$(\lambda_{\mathrm{dos}},\lambda_{\mathrm{scan}})\in\{"
+        + ", ".join(labels)
+        + r"\}$"
+    )
+
+
+def lambda_pair_caption(label, math=True):
+    match = re.fullmatch(r"\(([^,]+),([^)]+)\)", label)
+    if not match:
+        return rf"$\lambda={label}$" if math else label
+
+    text = (
+        rf"\lambda_{{\mathrm{{dos}}}}={match.group(1)}, "
+        rf"\lambda_{{\mathrm{{scan}}}}={match.group(2)}"
+    )
+    return f"${text}$" if math else text
 
 
 def per_class_logic_cells(row, logic_best):
-    if logic_best and row.model_label == "Łukasiewicz":
-        return rf"        & \textbf{{{row.model_label}}}" + "\n" + (
-            f"                        & {row.lambda_label:<7} & "
-        )
     if logic_best:
-        return rf"        & \textbf{{{row.model_label}}}& {row.lambda_label:<7} & "
-    return f"        & {row.model_label:<13} & {row.lambda_label:<7} & "
+        return rf"        & \textbf{{{row.model_label}}}& "
+    return f"        & {row.model_label:<13} & "
 
 
 def print_per_class_table(rows, experiment):
@@ -408,15 +615,14 @@ def print_per_class_table(rows, experiment):
     else:
         print(r"        \multirow{2}{*}{\textbf{\makecell{Test\\Dataset}}}")
     print(r"        & \multirow{2}{*}{\textbf{Logic}}")
-    print(r"        & \multirow{2}{*}{\makecell{$\boldsymbol{\lambda}$\\$\boldsymbol{(\mathrm{dos},\mathrm{scan})}$}}")
     for cls_index, cls in enumerate(classes):
         suffix = r" \\" if cls_index == len(classes) - 1 else ""
         print(rf"        & \multicolumn{{2}}{{c}}{{\textbf{{{CLASS_LABELS[cls]}}}}}{suffix}")
-    cmidrule_start = 4
+    cmidrule_start = 3
     for cls_index, _ in enumerate(classes):
         start = cmidrule_start + 2 * cls_index
         print(rf"        \cmidrule(lr){{{start}-{start + 1}}}")
-    print(r"        & &")
+    print(r"        &")
     for cls_index, _ in enumerate(classes):
         prefix = "        & " if cls_index == 0 else "        & "
         suffix = r" \\" if cls_index == len(classes) - 1 else ""
@@ -452,7 +658,7 @@ def print_per_class_table(rows, experiment):
             if row.per_class is None:
                 ncols = 2 * len(classes)
                 print(
-                    f"        & {row.model_label:<13} & {row.lambda_label:<7} "
+                    f"        & {row.model_label:<13} "
                     f"& \\multicolumn{{{ncols}}}{{c}}{{No complete runs}} \\\\"
                 )
                 continue
@@ -475,8 +681,9 @@ def print_per_class_table(rows, experiment):
     else:
         print(r"        \end{tabular}}")
     print(
-        rf"    \caption{{\textbf{{Experiment {exp_number}}}. "
-        r"Bold values indicate the best score within each test-dataset block for the corresponding metric.}"
+        rf"    \caption{{\textbf{{Experiment {exp_number}}} with "
+        + lambda_caption(rows, experiment)
+        + r".}"
     )
     print(rf"    \label{{tab:e{exp_number}PerClassResults}}")
     print(rf"\end{{{table_env}}}")
@@ -491,8 +698,3 @@ if __name__ == "__main__":
     rows = collect_rows(output_root)
 
     print_overall_table(rows)
-    print()
-
-    for experiment in PER_CLASS_EXPERIMENTS:
-        print_per_class_table(rows, experiment)
-        print()
