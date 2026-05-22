@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 #SBATCH --job-name=ex4_prop
 #SBATCH --output=outputs/ex4/properties/slurm/%x_task-%a_job-%A.out
 #SBATCH --error=outputs/ex4/properties/slurm/%x_task-%a_job-%A.err
@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-29
+#SBATCH --array=0-44
 
 
 export TMPDIR=/home/username/tmp
@@ -54,3 +54,4 @@ echo "Run stderr: $RUN_STDERR"
 echo "Running: $COMMAND"
 
 eval "$COMMAND" >"$RUN_STDOUT" 2>"$RUN_STDERR"
+
