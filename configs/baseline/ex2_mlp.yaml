@@ -5,7 +5,9 @@ experiment:
 
 data:
   train_path: data/cicids2017_preprocessed.tsv
-  cross_eval_path: [data/ciciot2023_preprocessed_good.tsv]
+  cross_eval_path: 
+    - data/ciciot2023_preprocessed_small_good.tsv
+    - data/ciciot2023_preprocessed_small_bad.tsv
   labels: [BENIGN, ATTACK]
   attack_source_labels: [DOS_HTTP_FLOOD, PORTSCAN, XSS, SQL_INJECTION, BRUTE_FORCE]
   test_size: 0.3
@@ -21,4 +23,4 @@ model:
   min_delta: 0.00001
 
 output:
-  root: outputs/ex2/baseline/mlp_ciciot2023_to_cicids2017
+  root: outputs/baselines/ex2/mlp/

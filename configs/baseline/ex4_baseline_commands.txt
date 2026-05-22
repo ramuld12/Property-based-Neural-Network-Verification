@@ -1,10 +1,10 @@
-python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run1 --set experiment.seed=1 --set output.root=outputs/ex4/baseline/rf_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run2 --set experiment.seed=2 --set output.root=outputs/ex4/baseline/rf_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run3 --set experiment.seed=3 --set output.root=outputs/ex4/baseline/rf_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run4 --set experiment.seed=4 --set output.root=outputs/ex4/baseline/rf_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run5 --set experiment.seed=5 --set output.root=outputs/ex4/baseline/rf_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run1 --set experiment.seed=1 --set output.root=outputs/ex4/baseline/mlp_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run2 --set experiment.seed=2 --set output.root=outputs/ex4/baseline/mlp_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run3 --set experiment.seed=3 --set output.root=outputs/ex4/baseline/mlp_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run4 --set experiment.seed=4 --set output.root=outputs/ex4/baseline/mlp_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
-python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run5 --set experiment.seed=5 --set output.root=outputs/ex4/baseline/mlp_to_ciciot2023_both --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv,data/ciciot2023_preprocessed_bad.tsv]
+python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run1 --set experiment.seed=1
+python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run2 --set experiment.seed=2
+python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run3 --set experiment.seed=3
+python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run4 --set experiment.seed=4
+python -m thesis.cli run baseline --config configs/baseline/ex4_rf.yaml --set experiment.name=run5 --set experiment.seed=5
+python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run1 --set experiment.seed=1
+python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run2 --set experiment.seed=2
+python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run3 --set experiment.seed=3
+python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run4 --set experiment.seed=4
+python -m thesis.cli run baseline --config configs/baseline/ex4_mlp.yaml --set experiment.name=run5 --set experiment.seed=5
