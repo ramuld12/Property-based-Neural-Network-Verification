@@ -36,6 +36,8 @@ def read_tsv(path: str | Path) -> pd.DataFrame:
 
 def cross_eval_paths(config: dict) -> list[Path]:
     paths = config["data"].get("cross_eval_path", [])
+    if paths is None:
+        return []
     if not isinstance(paths, list):
         raise TypeError("data.cross_eval_path must be a list, e.g. [data/ciciot2023_preprocessed_good.tsv].")
     return [Path(path) for path in paths]

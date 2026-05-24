@@ -186,3 +186,20 @@ def evaluate_run(model_path: Path, cross_data: list[Path] | None = None) -> None
         _evaluate_properties(run_dir, payload, config, paths)
     else:
         _evaluate_baseline(run_dir, payload, config, paths)
+
+
+def evaluate_tree(root: Path, cross_data: list[Path], pattern: str = "model.joblib") -> None:
+    root = Path(root)
+    if not root.exists():
+        raise FileNotFoundError(f"Expected model root directory at {root}")
+    if not root.is_dir():
+        raise NotADirectoryError(f"--root must point to a directory: {root}")
+
+    model_paths = sorted(root.rglob(pattern))
+    if not model_paths:
+        raise FileNotFoundError(f"No {pattern!r} files found below {root}")
+
+    print(f"Found {len(model_paths)} model(s) below {root}")
+    for index, model_path in enumerate(model_paths, start=1):
+        print(f"\n[{index}/{len(model_paths)}] Evaluating {model_path}")
+        evaluate_run(model_path, cross_data)

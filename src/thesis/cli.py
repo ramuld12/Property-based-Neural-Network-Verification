@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from thesis.config import apply_overrides, load_config
-from thesis.experiments.evaluate import evaluate_run
+from thesis.experiments.evaluate import evaluate_run, evaluate_tree
 
 
 def main() -> None:
@@ -19,6 +19,10 @@ def main() -> None:
     eval_parser = subparsers.add_parser("evaluate")
     eval_parser.add_argument("--model", required=True, type=Path, help="Path to a saved model.joblib file")
     eval_parser.add_argument("--cross-data", nargs="+", type=Path)
+
+    eval_tree_parser = subparsers.add_parser("evaluate-tree")
+    eval_tree_parser.add_argument("--root", required=True, type=Path, help="Directory to search recursively for model.joblib files")
+    eval_tree_parser.add_argument("--cross-data", nargs="+", required=True, type=Path)
 
     args = parser.parse_args()
 
@@ -35,6 +39,8 @@ def main() -> None:
 
     elif args.command == "evaluate":
         evaluate_run(args.model, args.cross_data)
+    elif args.command == "evaluate-tree":
+        evaluate_tree(args.root, args.cross_data)
 
 
 if __name__ == "__main__":

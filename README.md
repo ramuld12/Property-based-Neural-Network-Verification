@@ -58,7 +58,7 @@ python -m thesis.cli run properties \
   --set properties.logic=dl2
 ```
 
-`data.cross_eval_path` is always a list. Use one entry for a single external dataset, or multiple entries when the same trained model should be evaluated on several external datasets:
+`data.cross_eval_path` is optional for training runs. Omit it, leave it blank, or set it to `[]` to skip training-time cross-dataset evaluation. When provided, it must be a list. Use one entry for a single external dataset, or multiple entries when the same trained model should be evaluated on several external datasets:
 
 ```yaml
 data:
@@ -71,6 +71,12 @@ CLI overrides should also pass a list:
 
 ```bash
 --set data.cross_eval_path=[data/ciciot2023_preprocessed_good.tsv]
+```
+
+To skip cross-evaluation from the CLI, pass an empty list:
+
+```bash
+--set data.cross_eval_path=[]
 ```
 
 ## Config parameters
@@ -87,7 +93,7 @@ Common experiment keys:
 Data keys:
 
 - `data.train_path`: preprocessed TSV used for training, validation, and test splits.
-- `data.cross_eval_path`: list of preprocessed TSVs for cross-dataset evaluation.
+- `data.cross_eval_path`: optional list of preprocessed TSVs for training-time cross-dataset evaluation; omit, leave blank, or set `[]` to skip.
 - `data.labels`: class labels to train and evaluate.
 - `data.attack_source_labels`: source attack labels collapsed into generic `ATTACK` for binary or mixed tasks.
 - `data.test_size`: held-out test fraction.
@@ -172,10 +178,18 @@ Use the evaluation command to load a saved model and run post-hoc cross-dataset 
 python -m thesis.cli evaluate --model outputs/path/to/run/model.joblib
 python -m thesis.cli evaluate --model outputs/path/to/run/model.joblib --cross-data data/ciciot2023_preprocessed_good.tsv
 python -m thesis.cli evaluate --model outputs/path/to/run/model.joblib --cross-data data/ciciot2023_preprocessed_good.tsv data/ciciot2023_preprocessed_bad.tsv
+python -m thesis.cli evaluate-tree --root outputs/high_lambda --cross-data data/ciciot2023_preprocessed_good.tsv data/ciciot2023_preprocessed_bad.tsv
 ```
 
 - `--model`: required path to an existing `model.joblib` file.
 - `--cross-data`: optional space-separated list of preprocessed TSV files to evaluate. If omitted, the command uses the saved run config's `data.cross_eval_path`.
+- `evaluate-tree --root`: recursively evaluates every `model.joblib` below the root directory. `configs/properties/eval_high_lambda_models.txt` runs this for all models below `outputs/high_lambda`.
+
+On SLURM, submit the matching batch script:
+
+```bash
+sbatch scripts/slurm/eval_high_lambda_models.sbatch
+```
 
 This behaves like training-time cross evaluation: each dataset is labeled and feature-engineered with the saved run config, transformed with the saved clipping bounds and scaler from the model payload, then evaluated with the saved model. Results are written below `<model_parent>/cross_eval/<dataset_stem>/`.
 
