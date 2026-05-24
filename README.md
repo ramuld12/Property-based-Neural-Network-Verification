@@ -185,7 +185,7 @@ python -m thesis.cli evaluate-tree --root outputs/high_lambda --cross-data data/
 - `--cross-data`: optional space-separated list of preprocessed TSV files to evaluate. If omitted, the command uses the saved run config's `data.cross_eval_path`.
 - `evaluate-tree --root`: recursively evaluates every `model.joblib` below the root directory. `configs/properties/eval_high_lambda_models.txt` runs this for all models below `outputs/high_lambda`.
 
-On SLURM, submit the matching batch script:
+On SLURM, submit the matching batch script. It runs one model per array task and caps the array at 10 concurrent evaluations:
 
 ```bash
 sbatch scripts/slurm/eval_high_lambda_models.sbatch
