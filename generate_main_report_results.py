@@ -2,7 +2,6 @@
 import argparse
 from pathlib import Path
 
-from generate_best_lambda_report_results import constraint_cell
 from generate_report_results import (
     CLASS_LABELS,
     CLASSES,
@@ -10,6 +9,8 @@ from generate_report_results import (
     EXPERIMENTS,
     block_rows,
     collect_rows,
+    constraint_cell,
+    constraint_value,
     fmt,
     is_best,
     tex_logic,
@@ -41,33 +42,26 @@ def per_class_values_by_class(row):
 def per_class_best(rows, classes):
     best = {}
     for cls in classes:
-        accs, f1s, csecs = [], [], []
+        accs, f1s, csecs, csats = [], [], [], []
         for row in rows:
             values = per_class_values_by_class(row).get(cls)
             if values is not None:
                 accs.append(values[0])
                 f1s.append(values[1])
 
-            if row.constraints is None:
-                continue
-            if row.experiment in {"ex1", "ex2"}:
-                csec = row.constraints.get("attack") if cls == "ATTACK" else None
-            elif row.experiment in {"ex3", "ex4"}:
-                if cls == "PORTSCAN":
-                    csec = row.constraints.get("scan")
-                elif cls == "DOS_HTTP_FLOOD":
-                    csec = row.constraints.get("dos")
-                else:
-                    csec = None
-            else:
-                csec = None
+            csec = constraint_value(row, cls, "csec")
             if csec is not None:
                 csecs.append(csec)
+            csat = constraint_value(row, cls, "csat")
+            if csat is not None:
+                csats.append(csat)
 
         if accs and f1s:
             best[cls] = {"acc": max(accs), "f1": max(f1s)}
         if csecs:
             best.setdefault(cls, {})["csec"] = max(csecs)
+        if csats:
+            best.setdefault(cls, {})["csat"] = max(csats)
     return best
 
 
@@ -76,7 +70,12 @@ def class_cells(row, cls, best):
     if values is None:
         cells = ["{-}", "{-}"]
         if cls != "BENIGN":
-            cells.extend(["{-}", "{}"])
+            cells.extend(
+                [
+                    constraint_cell(row, cls, "csec", best),
+                    constraint_cell(row, cls, "csat", best),
+                ]
+            )
         return cells
 
     cells = [
@@ -84,7 +83,12 @@ def class_cells(row, cls, best):
         tex_num(values[1], is_best(values[1], best[cls]["f1"])),
     ]
     if cls != "BENIGN":
-        cells.extend([constraint_cell(row, cls, best), "{}"])
+        cells.extend(
+            [
+                constraint_cell(row, cls, "csec", best),
+                constraint_cell(row, cls, "csat", best),
+            ]
+        )
     return cells
 
 

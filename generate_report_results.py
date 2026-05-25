@@ -24,6 +24,11 @@ DATASETS = [
     ("Bad", "bad"),
 ]
 
+CROSS_EVAL_DATASETS = {
+    "good": "ciciot2023_preprocessed_good",
+    "bad": "ciciot2023_preprocessed_bad",
+}
+
 CLASSES = {
     "ex1": ["BENIGN", "ATTACK"],
     "ex2": ["BENIGN", "ATTACK"],
@@ -51,7 +56,7 @@ class ResultRow:
     lambda_label: str
     aggregate: list[float] | None
     per_class: list[float] | None
-    constraints: dict[str, float] | None
+    constraints: dict[str, dict[str, float]] | None
 
 
 def read_report(path):
@@ -59,21 +64,43 @@ def read_report(path):
         return {row[""]: row for row in csv.DictReader(f)}
 
 
-def complete_runs(folder):
+def cross_eval_path(run, dataset_key, filename):
+    cross_eval = run / "cross_eval"
+    dataset_name = CROSS_EVAL_DATASETS[dataset_key]
+    dataset_path = cross_eval / dataset_name / filename
+    if dataset_path.exists() and "small" not in dataset_path.as_posix():
+        return dataset_path
+
+    legacy_path = cross_eval / filename
+    if legacy_path.exists() and "small" not in legacy_path.as_posix():
+        return legacy_path
+
+    return None
+
+
+def cross_eval_report_path(run, dataset_key):
+    return cross_eval_path(run, dataset_key, "classification_report.csv")
+
+
+def cross_eval_metrics_path(run, dataset_key):
+    return cross_eval_path(run, dataset_key, "metrics.json")
+
+
+def complete_runs(folder, dataset_key):
     if not folder.exists():
         return []
     return [
         run
         for run in sorted(folder.iterdir())
         if run.is_dir()
-        and (run / "cross_eval" / "classification_report.csv").exists()
+        and cross_eval_report_path(run, dataset_key) is not None
     ]
 
 
-def complete_aggregate_runs(folder):
+def complete_aggregate_runs(folder, dataset_key):
     return [
         run
-        for run in complete_runs(folder)
+        for run in complete_runs(folder, dataset_key)
         if (run / "test" / "classification_report.csv").exists()
     ]
 
@@ -120,13 +147,13 @@ def lambda_from_config(run):
     return f"({clean_lambda(dos.group(1))},{clean_lambda(scan.group(1))})"
 
 
-def aggregate_values(runs):
+def aggregate_values(runs, dataset_key):
     train_values = {"acc": [], "prec": [], "rec": [], "f1": []}
     cross_values = {"acc": [], "prec": [], "rec": [], "f1": []}
 
     for run in runs:
         train_report = read_report(run / "test" / "classification_report.csv")
-        cross_report = read_report(run / "cross_eval" / "classification_report.csv")
+        cross_report = read_report(cross_eval_report_path(run, dataset_key))
 
         train_values["acc"].append(float(train_report["accuracy"]["accuracy"]))
         train_values["prec"].append(float(train_report["weighted avg"]["precision"]))
@@ -144,13 +171,13 @@ def aggregate_values(runs):
     ]
 
 
-def per_class_values(runs, classes):
+def per_class_values(runs, classes, dataset_key):
     values = []
     for cls in classes:
         accs, f1s = [], []
 
         for run in runs:
-            report = read_report(run / "cross_eval" / "classification_report.csv")
+            report = read_report(cross_eval_report_path(run, dataset_key))
             if cls not in report:
                 raise ValueError(f"{cls} missing in {run}")
 
@@ -162,32 +189,47 @@ def per_class_values(runs, classes):
     return values
 
 
-def constraint_values(runs):
-    dos_values, scan_values, attack_values = [], [], []
+def constraint_values(runs, dataset_key):
+    values = {
+        "dos": {"csec": [], "csat": []},
+        "scan": {"csec": [], "csat": []},
+        "attack": {"csec": [], "csat": []},
+    }
 
     for run in runs:
-        path = run / "cross_eval" / "metrics.json"
-        if not path.exists():
+        path = cross_eval_metrics_path(run, dataset_key)
+        if path is None:
             continue
 
         metrics = json.loads(path.read_text())
-        dos_value = metrics.get("adv_dos_sat")
-        scan_value = metrics.get("adv_scan_sat")
-        if dos_value is not None:
-            dos_values.append(float(dos_value))
-        if scan_value is not None:
-            scan_values.append(float(scan_value))
-        if dos_value is not None and scan_value is not None:
-            attack_values.append((float(dos_value) + float(scan_value)) / 2)
+        dos_csec = metrics.get("csec_dos")
+        dos_csat = metrics.get("csat_dos")
+        scan_csec = metrics.get("csec_scan")
+        scan_csat = metrics.get("csat_scan")
 
-    values = {}
-    if dos_values:
-        values["dos"] = mean(dos_values)
-    if scan_values:
-        values["scan"] = mean(scan_values)
-    if attack_values:
-        values["attack"] = mean(attack_values)
-    return values or None
+        if dos_csec is not None:
+            values["dos"]["csec"].append(float(dos_csec))
+        if dos_csat is not None:
+            values["dos"]["csat"].append(float(dos_csat))
+        if scan_csec is not None:
+            values["scan"]["csec"].append(float(scan_csec))
+        if scan_csat is not None:
+            values["scan"]["csat"].append(float(scan_csat))
+        if dos_csec is not None and scan_csec is not None:
+            values["attack"]["csec"].append((float(dos_csec) + float(scan_csec)) / 2)
+        if dos_csat is not None and scan_csat is not None:
+            values["attack"]["csat"].append((float(dos_csat) + float(scan_csat)) / 2)
+
+    result = {}
+    for constraint, metric_values in values.items():
+        populated = {
+            metric: mean(metric_list)
+            for metric, metric_list in metric_values.items()
+            if metric_list
+        }
+        if populated:
+            result[constraint] = populated
+    return result or None
 
 
 def baseline_folder(root, experiment, dataset_key, model_key):
@@ -199,7 +241,16 @@ def baseline_folder(root, experiment, dataset_key, model_key):
 
 
 def property_folder(root, experiment, dataset_key, model_key):
-    return root / experiment / "properties" / model_key / dataset_key
+    root = root / experiment / "properties" / model_key
+    dataset_folder = root / dataset_key
+    if dataset_folder.exists():
+        return dataset_folder
+
+    both_folder = root / "both"
+    if both_folder.exists():
+        return both_folder
+
+    return dataset_folder
 
 
 def unique_existing(paths):
@@ -242,35 +293,41 @@ def discover_property_roots(output_root):
     if has_experiment_subdir(output_root, "properties"):
         return [output_root]
 
+    candidates = [
+        path for path in sorted(output_root.glob("lambda_*")) if lambda_from_root(path)
+    ]
+    if candidates:
+        return candidates
+
     final_roots = [
         output_root,
+        output_root / "final_models",
+        output_root.parent / "final_models",
+        Path("outputs") / "final_models",
         output_root / "final_lambda_exp",
         output_root.parent / "final_lambda_exp",
         Path("outputs") / "final_lambda_exp",
     ]
     for root in final_roots:
-        if root.name == "final_lambda_exp" and root.exists():
+        if root.name in {"final_models", "final_lambda_exp"} and root.exists():
             return [
                 path
                 for path in sorted(root.glob("lambda_*"))
                 if lambda_from_root(path)
             ]
 
-    candidates = [
-        path for path in sorted(output_root.glob("lambda_*")) if lambda_from_root(path)
-    ]
-    if candidates:
-        return candidates
     return [output_root] if output_root.exists() else []
 
 
-def choose_best_candidate(candidates):
+def choose_best_candidate(candidates, dataset_key, run_filter=None):
     complete = []
     for folder, lambda_label in candidates:
-        runs = complete_aggregate_runs(folder)
+        runs = complete_aggregate_runs(folder, dataset_key)
+        if run_filter is not None:
+            runs = [run for run in runs if run_filter(run)]
         if not runs:
             continue
-        values = aggregate_values(runs)
+        values = aggregate_values(runs, dataset_key)
         complete.append((values[7], values[4], folder, lambda_label, runs, values))
 
     if not complete:
@@ -304,7 +361,7 @@ def collect_rows(output_root):
                         for root in baseline_roots
                     ]
 
-                chosen = choose_best_candidate(candidates)
+                chosen = choose_best_candidate(candidates, dataset_key)
                 if chosen is None:
                     rows.append(
                         ResultRow(
@@ -331,8 +388,8 @@ def collect_rows(output_root):
                         model_label,
                         lambda_label,
                         aggregate,
-                        per_class_values(runs, CLASSES[experiment]),
-                        constraint_values(runs),
+                        per_class_values(runs, CLASSES[experiment], dataset_key),
+                        constraint_values(runs, dataset_key),
                     )
                 )
 
@@ -369,23 +426,55 @@ def per_class_map(row):
     }
 
 
+def constraint_metrics(row, cls):
+    if row.constraints is None or cls == "BENIGN":
+        return None
+    if cls == "PORTSCAN":
+        return row.constraints.get("scan")
+    if cls == "DOS_HTTP_FLOOD":
+        return row.constraints.get("dos")
+    if cls == "ATTACK" and row.experiment in {"ex1", "ex2"}:
+        return row.constraints.get("attack")
+    return None
+
+
+def constraint_value(row, cls, metric):
+    metrics = constraint_metrics(row, cls)
+    if metrics is None:
+        return None
+    return metrics.get(metric)
+
+
+def constraint_cell(row, cls, metric, best):
+    value = constraint_value(row, cls, metric)
+    if value is None:
+        return "{-}"
+    best_value = best.get(cls, {}).get(metric)
+    return tex_num(value, best_value is not None and is_best(value, best_value))
+
+
 def combined_per_class_best(rows):
     best = {}
     for cls in COMBINED_CLASSES:
-        accs, f1s, csecs = [], [], []
+        accs, f1s, csecs, csats = [], [], [], []
         for row in rows:
             values = per_class_map(row).get(cls)
             if values is not None:
                 accs.append(values[0])
                 f1s.append(values[1])
 
-            csec = constraint_value(row, cls)
+            csec = constraint_value(row, cls, "csec")
             if csec is not None:
                 csecs.append(csec)
+            csat = constraint_value(row, cls, "csat")
+            if csat is not None:
+                csats.append(csat)
         if accs and f1s:
             best[cls] = {"acc": max(accs), "f1": max(f1s)}
         if csecs:
             best.setdefault(cls, {})["csec"] = max(csecs)
+        if csats:
+            best.setdefault(cls, {})["csat"] = max(csats)
     return best
 
 
@@ -397,7 +486,12 @@ def combined_per_class_values(row, best):
         if values is None:
             cells.extend(["{-}", "{-}"])
             if cls != "BENIGN":
-                cells.extend(["{-}", "{-}"])
+                cells.extend(
+                    [
+                        constraint_cell(row, cls, "csec", best),
+                        constraint_cell(row, cls, "csat", best),
+                    ]
+                )
             continue
 
         best_acc = best[cls]["acc"]
@@ -409,31 +503,13 @@ def combined_per_class_values(row, best):
             ]
         )
         if cls != "BENIGN":
-            cells.extend([constraint_cell(row, cls, best), "{}"])
+            cells.extend(
+                [
+                    constraint_cell(row, cls, "csec", best),
+                    constraint_cell(row, cls, "csat", best),
+                ]
+            )
     return cells
-
-
-def constraint_cell(row, cls, best):
-    value = constraint_value(row, cls)
-    if value is None:
-        return "{-}"
-    best_value = best.get(cls, {}).get("csec")
-    return tex_num(value, best_value is not None and is_best(value, best_value))
-
-
-def constraint_value(row, cls):
-    if row.constraints is None:
-        return None
-    if row.experiment in {"ex1", "ex2"}:
-        if cls == "ATTACK" and "attack" in row.constraints:
-            return row.constraints["attack"]
-        return None
-    if row.experiment in {"ex3", "ex4"}:
-        if cls == "PORTSCAN" and "scan" in row.constraints:
-            return row.constraints["scan"]
-        if cls == "DOS_HTTP_FLOOD" and "dos" in row.constraints:
-            return row.constraints["dos"]
-    return None
 
 
 def print_combined_table(rows):

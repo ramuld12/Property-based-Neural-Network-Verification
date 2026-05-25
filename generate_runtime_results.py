@@ -47,6 +47,25 @@ class RuntimeRecord:
         return self.mean_seconds / 60
 
 
+@dataclass
+class LogicLambdaAverageRecord:
+    model_key: str
+    model_label: str
+    lambda_count: int
+    mean_seconds: float
+    std_seconds: float
+
+    @property
+    def mean_minutes(self):
+        return self.mean_seconds / 60
+
+
+@dataclass
+class ExperimentLogicRuntime:
+    experiment: str
+    records: list[LogicLambdaAverageRecord]
+
+
 def fmt_seconds(value):
     return f"{value:.2f}"
 
@@ -56,6 +75,17 @@ def fmt_minutes(value):
 
 
 def tex_logic(label):
+    return label
+
+
+def runtime_model_label(model_key, model_label):
+    return "Baseline MLP" if model_key == "baseline" else model_label
+
+
+def plot_record_label(record, include_lambda=False):
+    label = runtime_model_label(record.model_key, record.model_label)
+    if include_lambda and record.lambda_label != "--":
+        return f"{label}\n$\\lambda$={record.lambda_label}"
     return label
 
 
@@ -128,13 +158,17 @@ def make_record(model_key, model_label, lambda_label, summaries):
     all_values, avg_seconds, std_seconds = combined
     return RuntimeRecord(
         model_key=model_key,
-        model_label=model_label,
+        model_label=runtime_model_label(model_key, model_label),
         lambda_label=lambda_label,
         run_count=len(all_values),
         run_seconds=all_values,
         mean_seconds=avg_seconds,
         std_seconds=std_seconds,
     )
+
+
+def is_run2(run):
+    return run.name.endswith("_run2")
 
 
 def collect_best_lambda_records(output_root, experiment):
@@ -161,7 +195,7 @@ def collect_best_lambda_records(output_root, experiment):
                     for root in baseline_roots
                 ]
 
-            chosen = choose_best_candidate(candidates)
+            chosen = choose_best_candidate(candidates, dataset_key, run_filter=is_run2)
             if chosen is None:
                 continue
 
@@ -191,8 +225,10 @@ def collect_all_lambda_records(output_root, experiment):
                 candidate_summaries = []
                 for root in baseline_roots:
                     runs = complete_aggregate_runs(
-                        baseline_folder(root, experiment, dataset_key, model_key)
+                        baseline_folder(root, experiment, dataset_key, model_key),
+                        dataset_key,
                     )
+                    runs = [run for run in runs if is_run2(run)]
                     if runs:
                         candidate_summaries.append(dataset_runtime_summary(runs, model_key))
                 summaries.extend(summary for summary in candidate_summaries if summary is not None)
@@ -207,8 +243,10 @@ def collect_all_lambda_records(output_root, experiment):
             summaries = []
             for _, dataset_key in DATASETS:
                 runs = complete_aggregate_runs(
-                    property_folder(root, experiment, dataset_key, model_key)
+                    property_folder(root, experiment, dataset_key, model_key),
+                    dataset_key,
                 )
+                runs = [run for run in runs if is_run2(run)]
                 if not runs:
                     continue
                 summary = dataset_runtime_summary(runs, model_key)
@@ -302,7 +340,7 @@ def record_from_csv_row(row):
         run_seconds = [float(row["mean_seconds"])] * run_count
     return RuntimeRecord(
         model_key=row["model_key"],
-        model_label=row["model_label"],
+        model_label=runtime_model_label(row["model_key"], row["model_label"]),
         lambda_label=row["lambda_label"],
         run_count=run_count,
         run_seconds=run_seconds,
@@ -358,7 +396,7 @@ def write_runtime_csv(path, experiment, best_records, all_records):
 
 
 def plot_best_lambda(records, experiment, path):
-    labels = [record.model_label for record in records]
+    labels = [plot_record_label(record, include_lambda=True) for record in records]
     means = [record.mean_seconds for record in records]
     errors = [record.std_seconds for record in records]
 
@@ -376,9 +414,9 @@ def plot_best_lambda(records, experiment, path):
 def plot_all_lambdas(records, experiment, path):
     sorted_records = sorted(records, key=lambda record: record.mean_seconds)
     labels = [
-        f"{record.model_label} {record.lambda_label}"
+        f"{plot_record_label(record)} {record.lambda_label}"
         if record.lambda_label != "--"
-        else record.model_label
+        else plot_record_label(record)
         for record in sorted_records
     ]
     means = [record.mean_seconds for record in sorted_records]
@@ -395,10 +433,174 @@ def plot_all_lambdas(records, experiment, path):
     plt.close(fig)
 
 
+def collect_logic_lambda_average_records(all_records):
+    records = []
+    for model_key, model_label, is_property in MODELS:
+        logic_records = [
+            record
+            for record in all_records
+            if record.model_key == model_key
+            and (is_property or record.lambda_label == "--")
+        ]
+        if not logic_records:
+            continue
+
+        lambda_means = [record.mean_seconds for record in logic_records]
+        records.append(
+            LogicLambdaAverageRecord(
+                model_key=model_key,
+                model_label=runtime_model_label(model_key, model_label),
+                lambda_count=len(lambda_means) if is_property else 0,
+                mean_seconds=mean(lambda_means),
+                std_seconds=stdev(lambda_means) if len(lambda_means) > 1 else 0.0,
+            )
+        )
+    return records
+
+
+def print_logic_lambda_average_log(experiment, records):
+    print(f"===== Logic runtime averaged over lambda combinations: {experiment.upper()} =====")
+    print(
+        f"{'Logic':<16} {'Lambdas':>7} "
+        f"{'Mean epoch (s)':>16} {'Std across lambdas':>19} {'Mean min':>10}"
+    )
+    print("-" * 74)
+    for record in records:
+        print(
+            f"{record.model_label:<16} {record.lambda_count or '--':>7} "
+            f"{fmt_seconds(record.mean_seconds):>16} "
+            f"{fmt_seconds(record.std_seconds):>19} "
+            f"{fmt_minutes(record.mean_minutes):>10}"
+        )
+    print()
+
+
+def plot_logic_lambda_average(records, experiment, path):
+    labels = [record.model_label for record in records]
+    means = [record.mean_seconds for record in records]
+    errors = [record.std_seconds for record in records]
+
+    fig, ax = plt.subplots(figsize=(8.2, 4.8))
+    ax.bar(labels, means, yerr=errors, capsize=4, color="#6fa8dc", edgecolor="#2f4f6f")
+    ax.set_ylabel("Average epoch time (s)")
+    ax.set_title(f"{experiment.upper()} runtime averaged over lambda combinations")
+    ax.tick_params(axis="x", rotation=20)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
+def collect_experiment_logic_runtimes(output_root):
+    return [
+        ExperimentLogicRuntime(
+            experiment=experiment,
+            records=collect_logic_lambda_average_records(
+                collect_all_lambda_records(output_root, experiment)
+            ),
+        )
+        for experiment in EXPERIMENTS
+    ]
+
+
+def print_combined_logic_runtime_log(experiment_records):
+    print("===== Logic runtime averaged over lambda combinations: all experiments =====")
+    for item in experiment_records:
+        print_logic_lambda_average_log(item.experiment, item.records)
+
+
+def plot_combined_logic_lambda_average(experiment_records, path):
+    baseline_keys = [model_key for model_key, _, is_property in MODELS if not is_property]
+    property_keys = [model_key for model_key, _, is_property in MODELS if is_property]
+    labels_by_key = {
+        model_key: runtime_model_label(model_key, model_label)
+        for model_key, model_label, _ in MODELS
+    }
+    records_by_experiment = {
+        item.experiment: {record.model_key: record for record in item.records}
+        for item in experiment_records
+    }
+
+    baseline_records = {}
+    for key in baseline_keys:
+        experiment_baselines = [
+            records_by_experiment[experiment].get(key)
+            for experiment in EXPERIMENTS
+            if records_by_experiment[experiment].get(key) is not None
+        ]
+        if not experiment_baselines:
+            continue
+        baseline_means = [record.mean_seconds for record in experiment_baselines]
+        baseline_records[key] = LogicLambdaAverageRecord(
+            model_key=key,
+            model_label=labels_by_key[key],
+            lambda_count=0,
+            mean_seconds=mean(baseline_means),
+            std_seconds=stdev(baseline_means) if len(baseline_means) > 1 else 0.0,
+        )
+
+    colors = {
+        "ex1": "#4e79a7",
+        "ex2": "#f28e2b",
+        "ex3": "#59a14f",
+        "ex4": "#e15759",
+    }
+    baseline_color = "#9da3a6"
+    group_keys = baseline_keys + property_keys
+    group_centers = list(range(len(group_keys)))
+    width = 0.18
+
+    fig, ax = plt.subplots(figsize=(11.5, 5.4))
+
+    for center, key in zip(group_centers, group_keys):
+        if key in baseline_keys:
+            record = baseline_records.get(key)
+            if record is None:
+                continue
+            ax.bar(
+                center,
+                record.mean_seconds,
+                yerr=record.std_seconds,
+                width=0.5,
+                color=baseline_color,
+                edgecolor="#4f565c",
+                capsize=4,
+                label="Baseline" if key == baseline_keys[0] else None,
+            )
+            continue
+
+        offsets = [(-1.5 + index) * width for index in range(len(EXPERIMENTS))]
+        for experiment, offset in zip(EXPERIMENTS, offsets):
+            record = records_by_experiment[experiment].get(key)
+            if record is None:
+                continue
+            ax.bar(
+                center + offset,
+                record.mean_seconds,
+                yerr=record.std_seconds,
+                width=width,
+                color=colors[experiment],
+                edgecolor="#2f3b45",
+                linewidth=0.7,
+                capsize=3,
+                label=experiment.upper() if center == len(baseline_keys) else None,
+            )
+
+    ax.set_xticks(group_centers)
+    ax.set_xticklabels([labels_by_key[key] for key in group_keys], rotation=18, ha="right")
+    ax.set_ylabel("Average epoch/fit time (s)")
+    ax.set_title("Runtime averaged over lambda combinations across experiments")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(title="Experiment", frameon=True, loc="upper left", ncols=1)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("output_root", type=Path)
-    parser.add_argument("--experiment", choices=EXPERIMENTS, required=True)
+    parser.add_argument("--experiment", choices=EXPERIMENTS)
     parser.add_argument("--out-dir", type=Path, default=Path("."))
     parser.add_argument(
         "--runtime-csv",
@@ -414,6 +616,14 @@ def parse_args():
 def main():
     args = parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.experiment is None:
+        experiment_records = collect_experiment_logic_runtimes(args.output_root)
+        print_combined_logic_runtime_log(experiment_records)
+        path = args.out_dir / "runtime_all_experiments_logic_lambda_average.png"
+        plot_combined_logic_lambda_average(experiment_records, path)
+        print(f"Saved plot: {path}")
+        return
 
     cached = None
     if args.runtime_csv is not None:
@@ -431,28 +641,12 @@ def main():
             print(f"Wrote runtime summaries to: {args.runtime_csv}")
             print()
 
-    print_runtime_log("Best-lambda runtime report", args.experiment, best_records)
-    print_runtime_log("All-lambda runtime appendix", args.experiment, all_records)
+    logic_average_records = collect_logic_lambda_average_records(all_records)
+    print_logic_lambda_average_log(args.experiment, logic_average_records)
 
-    best_path = args.out_dir / f"runtime_{args.experiment}_best_lambda.png"
-    all_path = args.out_dir / f"runtime_{args.experiment}_all_lambdas.png"
-    plot_best_lambda(best_records, args.experiment, best_path)
-    plot_all_lambdas(all_records, args.experiment, all_path)
-
-    print(f"Saved plot: {best_path}")
-    print(f"Saved plot: {all_path}")
-    print()
-
-    print_latex_table(
-        f"{args.experiment.upper()} average epoch/fit runtime using best-performing lambdas.",
-        f"tab:{args.experiment}RuntimeBestLambda",
-        best_records,
-    )
-    print_latex_table(
-        f"{args.experiment.upper()} average epoch/fit runtime across all lambda values.",
-        f"tab:{args.experiment}RuntimeAllLambdas",
-        all_records,
-    )
+    path = args.out_dir / f"runtime_{args.experiment}_logic_lambda_average.png"
+    plot_logic_lambda_average(logic_average_records, args.experiment, path)
+    print(f"Saved plot: {path}")
 
 
 if __name__ == "__main__":

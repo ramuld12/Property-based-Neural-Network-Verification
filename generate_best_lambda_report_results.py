@@ -10,6 +10,8 @@ from generate_report_results import (
     best_columns,
     block_rows,
     collect_rows,
+    combined_per_class_best,
+    combined_per_class_values,
     discover_property_roots,
     fmt,
     is_best,
@@ -28,73 +30,6 @@ def per_class_map(row):
         cls: (row.per_class[2 * index], row.per_class[2 * index + 1])
         for index, cls in enumerate(classes)
     }
-
-
-def combined_per_class_best(rows):
-    best = {}
-    for cls in COMBINED_CLASSES:
-        accs, f1s, csecs = [], [], []
-        for row in rows:
-            values = per_class_map(row).get(cls)
-            if values is not None:
-                accs.append(values[0])
-                f1s.append(values[1])
-
-            csec = constraint_value(row, cls)
-            if csec is not None:
-                csecs.append(csec)
-        if accs and f1s:
-            best[cls] = {"acc": max(accs), "f1": max(f1s)}
-        if csecs:
-            best.setdefault(cls, {})["csec"] = max(csecs)
-    return best
-
-
-def combined_per_class_values(row, best):
-    values_by_class = per_class_map(row)
-    cells = []
-    for cls in COMBINED_CLASSES:
-        values = values_by_class.get(cls)
-        if values is None:
-            cells.extend(["{-}", "{-}"])
-            if cls != "BENIGN":
-                cells.extend(["{-}", "{-}"])
-            continue
-
-        best_acc = best[cls]["acc"]
-        best_f1 = best[cls]["f1"]
-        cells.extend(
-            [
-                tex_num(values[0], is_best(values[0], best_acc)),
-                tex_num(values[1], is_best(values[1], best_f1)),
-            ]
-        )
-        if cls != "BENIGN":
-            cells.extend([constraint_cell(row, cls, best), "{}"])
-    return cells
-
-
-def constraint_cell(row, cls, best):
-    value = constraint_value(row, cls)
-    if value is None:
-        return "{-}"
-    best_value = best.get(cls, {}).get("csec")
-    return tex_num(value, best_value is not None and is_best(value, best_value))
-
-
-def constraint_value(row, cls):
-    if row.constraints is None:
-        return None
-    if row.experiment in {"ex1", "ex2"}:
-        if cls == "ATTACK" and "attack" in row.constraints:
-            return row.constraints["attack"]
-        return None
-    if row.experiment in {"ex3", "ex4"}:
-        if cls == "PORTSCAN" and "scan" in row.constraints:
-            return row.constraints["scan"]
-        if cls == "DOS_HTTP_FLOOD" and "dos" in row.constraints:
-            return row.constraints["dos"]
-    return None
 
 
 def print_best_lambda_table(rows):
