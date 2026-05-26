@@ -510,8 +510,7 @@ def print_combined_logic_runtime_log(experiment_records):
 
 
 def plot_combined_logic_lambda_average(experiment_records, path):
-    baseline_keys = [model_key for model_key, _, is_property in MODELS if not is_property]
-    property_keys = [model_key for model_key, _, is_property in MODELS if is_property]
+    model_keys = [model_key for model_key, _, _ in MODELS]
     labels_by_key = {
         model_key: runtime_model_label(model_key, model_label)
         for model_key, model_label, _ in MODELS
@@ -521,55 +520,19 @@ def plot_combined_logic_lambda_average(experiment_records, path):
         for item in experiment_records
     }
 
-    baseline_records = {}
-    for key in baseline_keys:
-        experiment_baselines = [
-            records_by_experiment[experiment].get(key)
-            for experiment in EXPERIMENTS
-            if records_by_experiment[experiment].get(key) is not None
-        ]
-        if not experiment_baselines:
-            continue
-        baseline_means = [record.mean_seconds for record in experiment_baselines]
-        baseline_records[key] = LogicLambdaAverageRecord(
-            model_key=key,
-            model_label=labels_by_key[key],
-            lambda_count=0,
-            mean_seconds=mean(baseline_means),
-            std_seconds=stdev(baseline_means) if len(baseline_means) > 1 else 0.0,
-        )
-
     colors = {
         "ex1": "#4e79a7",
         "ex2": "#f28e2b",
         "ex3": "#59a14f",
         "ex4": "#e15759",
     }
-    baseline_color = "#9da3a6"
-    group_keys = baseline_keys + property_keys
-    group_centers = list(range(len(group_keys)))
+    group_centers = list(range(len(model_keys)))
     width = 0.18
 
     fig, ax = plt.subplots(figsize=(11.5, 5.4))
 
-    for center, key in zip(group_centers, group_keys):
-        if key in baseline_keys:
-            record = baseline_records.get(key)
-            if record is None:
-                continue
-            ax.bar(
-                center,
-                record.mean_seconds,
-                yerr=record.std_seconds,
-                width=0.5,
-                color=baseline_color,
-                edgecolor="#4f565c",
-                capsize=4,
-                label="Baseline" if key == baseline_keys[0] else None,
-            )
-            continue
-
-        offsets = [(-1.5 + index) * width for index in range(len(EXPERIMENTS))]
+    offsets = [(-1.5 + index) * width for index in range(len(EXPERIMENTS))]
+    for center, key in zip(group_centers, model_keys):
         for experiment, offset in zip(EXPERIMENTS, offsets):
             record = records_by_experiment[experiment].get(key)
             if record is None:
@@ -583,11 +546,11 @@ def plot_combined_logic_lambda_average(experiment_records, path):
                 edgecolor="#2f3b45",
                 linewidth=0.7,
                 capsize=3,
-                label=experiment.upper() if center == len(baseline_keys) else None,
+                label=experiment.upper() if center == 0 else None,
             )
 
     ax.set_xticks(group_centers)
-    ax.set_xticklabels([labels_by_key[key] for key in group_keys], rotation=18, ha="right")
+    ax.set_xticklabels([labels_by_key[key] for key in model_keys], rotation=18, ha="right")
     ax.set_ylabel("Average epoch/fit time (s)")
     ax.set_title("Runtime averaged over lambda combinations across experiments")
     ax.grid(axis="y", alpha=0.25)

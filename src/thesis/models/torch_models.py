@@ -5,14 +5,14 @@ import torch.nn as nn
 
 
 class MLP(nn.Module):
-    def __init__(self, n_features: int, num_classes: int):
+    def __init__(self, n_features: int, num_classes: int, hidden_width: int = 64):
         super().__init__()
         self.head = nn.Sequential(
-            nn.Linear(n_features, 64),
+            nn.Linear(n_features, hidden_width),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(hidden_width, hidden_width),
             nn.ReLU(),
-            nn.Linear(64, num_classes),
+            nn.Linear(hidden_width, num_classes),
         )
 
     def forward(self, x):
@@ -22,6 +22,13 @@ class MLP(nn.Module):
 
 
 def build_model(model_type: str, n_features: int, num_classes: int) -> nn.Module:
-    if model_type != "mlp":
-        raise ValueError(f"Unknown torch model type: {model_type}")
-    return MLP(n_features=n_features, num_classes=num_classes)
+    hidden_widths = {
+        "mlp": 64,
+        "mlp_43k": 200,
+        "mlp_186k": 422,
+    }
+    try:
+        hidden_width = hidden_widths[model_type]
+    except KeyError as exc:
+        raise ValueError(f"Unknown torch model type: {model_type}") from exc
+    return MLP(n_features=n_features, num_classes=num_classes, hidden_width=hidden_width)
