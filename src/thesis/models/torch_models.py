@@ -5,15 +5,23 @@ import torch.nn as nn
 
 
 class MLP(nn.Module):
-    def __init__(self, n_features: int, num_classes: int, hidden_width: int = 64):
+    def __init__(
+        self,
+        n_features: int,
+        num_classes: int,
+        hidden_width: int | tuple[int, ...] = 64,
+    ):
         super().__init__()
-        self.head = nn.Sequential(
-            nn.Linear(n_features, hidden_width),
-            nn.ReLU(),
-            nn.Linear(hidden_width, hidden_width),
-            nn.ReLU(),
-            nn.Linear(hidden_width, num_classes),
+        hidden_layers = (
+            hidden_width if isinstance(hidden_width, tuple) else (hidden_width, hidden_width)
         )
+        layers = []
+        previous_width = n_features
+        for width in hidden_layers:
+            layers.extend([nn.Linear(previous_width, width), nn.ReLU()])
+            previous_width = width
+        layers.append(nn.Linear(previous_width, num_classes))
+        self.head = nn.Sequential(*layers)
 
     def forward(self, x):
         if x.dim() == 3:
@@ -25,7 +33,8 @@ def build_model(model_type: str, n_features: int, num_classes: int) -> nn.Module
     hidden_widths = {
         "mlp": 64,
         "mlp_43k": 200,
-        "mlp_186k": 422,
+        "mlp_186k": (304, 288, 224, 128),
+        "mlp_449k": (512, 512, 256, 128),
     }
     try:
         hidden_width = hidden_widths[model_type]
