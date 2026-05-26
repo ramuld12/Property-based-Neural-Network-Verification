@@ -15,6 +15,8 @@ export TEMP=/home/username/tmp
 echo "Running on $(hostname)"
 echo "Working directory: $(pwd)"
 nvidia-smi
+echo "CPU information:"
+lscpu | grep -E 'Model name|CPU\(s\)|Thread|Core|Socket'
 
 SWEEP_FILE="configs/time_compare_186k.txt"
 LINE_NUMBER=$((SLURM_ARRAY_TASK_ID + 1))
