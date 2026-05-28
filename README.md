@@ -254,3 +254,77 @@ chmod +x process_pcaps.sh
 For the "Bad" dataset, processing is finished.
 
 For the "Good" dataset, run the labeling notebook at `data/CICIoT2023/label_ciciot2023.ipynb`.
+
+
+## Marabou verification
+
+Formal verification of trained MLP models is done with [Marabou] via three Jupyter notebooks. Random forest models cannot be verified because they cannot be exported to ONNX.
+
+### Install Marabou
+
+Marabou must be built from source. Clone the repository and follow the build instructions in its README:
+
+```bash
+git clone https://github.com/NeuralNetworkVerification/Marabou.git
+cd Marabou
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+The Python bindings (`maraboupy`) are part of the build output and do not require a separate `pip install`. After building, update the two `sys.path.insert` lines at the top of each verification notebook to point to your local Marabou clone and its `build/` directory:
+
+```python
+sys.path.insert(0, "/path/to/your/Marabou")
+sys.path.insert(0, "/path/to/your/Marabou/build")
+```
+
+### Notebook overview
+| `verify_baselines.ipynb` | Verifies all baseline MLP models (4 exercises × 5 runs = 20 models) |
+| `verify_models.ipynb` | Verifies all property-driven MLP models (9 lambda × 4 exercises × 5 logics = 180 models) |
+| `marabou.ipynb` | Single-model exploratory verification; useful for inspecting individual counterexamples |
+
+Each notebook verifies two properties per model: `portscan` and `dos_http_flood`. For each property the solver checks whether there exists an input within the property's feature bounds where the attack class does **not** win — i.e. a counterexample to the property. The result per model/property is `UNSAT` (property holds), `SAT` (counterexample found), or `TIMEOUT` (solver exceeded the 120-second limit per rival class).
+
+### Expected model directory layout
+
+`verify_baselines.ipynb` expects:
+
+```text
+baselines/{ex}/mlp/{run}/model.joblib
+```
+
+`verify_models.ipynb` expects:
+
+```text
+final_models/lambda_{dos}_{scan}/{ex}/properties/{logic}/both/{run}/model.joblib
+```
+
+Place the notebooks at the root of the directory that contains `baselines/` and `final_models/`, or adjust the `Path(...)` expressions at the top of each notebook accordingly.
+
+### Run verification
+
+Open either batch notebook in Jupyter and run all cells:
+
+```bash
+jupyter notebook verify_baselines.ipynb
+jupyter notebook verify_models.ipynb
+```
+
+Progress is printed after each model, including per-property CACC scores (fraction of property-region samples classified correctly), overall SAT/UNSAT/TIMEOUT status, and an ETA estimate.
+
+### Outputs
+Each batch notebook writes a timestamped JSON file to the current working directory:
+
+```text
+baseline_verification_results_YYYYMMDD_HHMMSS.json
+verification_results_YYYYMMDD_HHMMSS.json
+```
+
+Each file contains three top-level keys:
+
+- `verification`: per-model, per-property SAT/UNSAT/TIMEOUT results and per-rival-class breakdowns.
+- `cacc`: constraint accuracy scores (fraction of 200 uniformly sampled property-region inputs classified as the attack class).
+- `timing`: solver time in seconds per model/property.
+
+Summary tables grouped by exercise, logic, and lambda value are printed at the end of `verify_models.ipynb`.
