@@ -17,10 +17,6 @@ from thesis.results.plotting import plot_eval_summary
 from thesis.training.baseline import predict_torch, train_torch_classifier
 
 
-def _array_loader(x, y, batch_size):
-    return DataLoader(TensorDataset(torch.tensor(x).unsqueeze(1), torch.tensor(y)), batch_size=batch_size)
-
-
 def print_split_counts(name: str, labels: list[str], y) -> None:
     y = np.asarray(y)
     counts = {label: int((y == i).sum()) for i, label in enumerate(labels)}
@@ -95,7 +91,13 @@ def run_baseline(config: dict):
         y_pred = predict_torch(model, test_loader, device)
         cross_preds = []
         for cross_eval in data.cross_evals:
-            loader = _array_loader(cross_eval.x, np.zeros(len(cross_eval.x), dtype=np.int64), config["model"]["batch_size"])
+            loader = DataLoader(
+                TensorDataset(
+                    torch.tensor(cross_eval.x).unsqueeze(1),
+                    torch.tensor(np.zeros(len(cross_eval.x), dtype=np.int64)),
+                ),
+                batch_size=config["model"]["batch_size"],
+            )
             cross_preds.append((cross_eval, predict_torch(model, loader, device)))
 
     save_model(

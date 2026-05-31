@@ -112,9 +112,6 @@ class DoSHttpFloodPostcondition(ScaledFeatureMixin, Postcondition):
         self.init_scaling(scaler, scale_idx)
         self.model_feature_count = model_feature_count
 
-    def raw_time_elapsed(self, x):
-        return self.raw_col(x[:, self.idx["time_elapsed"]], "time_elapsed")
-
     def get_postcondition(self, N, x, x_adv):
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
@@ -149,7 +146,7 @@ class DoSHttpFloodPostcondition(ScaledFeatureMixin, Postcondition):
     def debug_parts(self, N, x, x_adv):
         valid_tcp = x[:, self.idx["valid_tcp_handshake"]]
         valid_http = x[:, self.idx["valid_http_conn"]]
-        time_elapsed = self.raw_time_elapsed(x)
+        time_elapsed = self.raw_col(x[:, self.idx["time_elapsed"]], "time_elapsed")
         raw_orig_bytes = self.raw_col(x_adv[:, self.idx["orig_bytes"]], "orig_bytes")
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
@@ -214,8 +211,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
         x_consistent[:, self.idx["fail_ratio"]] = x[:, self.idx["fail_ratio"]]
         return x_consistent
 
-    def adv_values(self, x, x_adv):
-        x_consistent = self.recompute_portscan_features(x, x_adv)
+    def portscan_values(self, x_consistent):
         uniq_dst_ports = self.round_ste(self.raw_col(x_consistent[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports")).clamp_min(1.0)
         pkts_per_port = self.raw_col(x_consistent[:, self.idx["pkts_per_port"]], "pkts_per_port")
         scan_duration = self.raw_col(x_consistent[:, self.idx["scan_duration"]], "scan_duration")
@@ -224,7 +220,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
 
     def get_postcondition(self, N, x, x_adv):
         x_consistent = self.recompute_portscan_features(x, x_adv)
-        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
+        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.portscan_values(x_consistent)
         scaled_uniq_dst_ports = self.scale_col(uniq_dst_ports, "uniq_dst_ports")
         scaled_fail_ratio = self.scale_col(fail_ratio, "fail_ratio")
         scaled_pkts_per_port = self.scale_col(pkts_per_port, "pkts_per_port")
@@ -257,7 +253,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
         x_consistent = self.recompute_portscan_features(x, x_adv)
-        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
+        uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.portscan_values(x_consistent)
         high_fail_ratio = fail_ratio >= self.portscan_specs["mal_fail_ratio_min"]
         low_pkts_per_port = pkts_per_port <= self.portscan_specs["mal_pkts_per_port_max"]
         short_scan_duration = scan_duration <= self.portscan_specs["mal_scan_duration_max"]
@@ -281,10 +277,6 @@ def build_precondition(config: dict, device):
     return cls(device=device, **config.get("params", {}))
 
 
-def pick_precondition_config(preconditions: dict, key: str) -> dict:
-    return preconditions.get(key, preconditions["default"])
-
-
 def build_constraints(
     feature_cols: list[str],
     labels: list[str],
@@ -299,8 +291,8 @@ def build_constraints(
     scale_idx = {name: i for i, name in enumerate(scale_cols)}
     auxiliary_indices = list(range(model_feature_count, len(feature_cols)))
     label_to_idx = {label: i for i, label in enumerate(labels)}
-    dos_precondition = build_precondition(pick_precondition_config(preconditions, "dos_http_flood"), device)
-    scan_precondition = build_precondition(pick_precondition_config(preconditions, "portscan"), device)
+    dos_precondition = build_precondition(preconditions.get("dos_http_flood", preconditions["default"]), device)
+    scan_precondition = build_precondition(preconditions.get("portscan", preconditions["default"]), device)
     dos_precondition = FixedAuxiliaryPrecondition(dos_precondition, auxiliary_indices)
     scan_precondition = FixedAuxiliaryPrecondition(scan_precondition, auxiliary_indices)
 

@@ -53,20 +53,13 @@ def build_logic(name: str):
         raise ValueError(f"Unknown logic: {name}") from exc
 
 
-def precondition_bounds(precondition, x):
-    if hasattr(precondition, "get_bounds"):
-        return precondition.get_bounds(x)
-    return precondition.get_precondition(x)
-
-
-def project_adv_if_global(x_adv, x, constraint):
-    lo, hi = precondition_bounds(constraint.precondition, x)
-    return torch.max(torch.min(x_adv, hi), lo)
-
-
 def make_consistent_adversarial(model, oracle, x, constraint):
     x_adv = oracle.attack(model, x, None, constraint)
-    return project_adv_if_global(x_adv, x, constraint)
+    if hasattr(constraint.precondition, "get_bounds"):
+        lo, hi = constraint.precondition.get_bounds(x)
+    else:
+        lo, hi = constraint.precondition.get_precondition(x)
+    return torch.max(torch.min(x_adv, hi), lo)
 
 
 def update_rule_stats(stats: dict, parts: dict) -> None:

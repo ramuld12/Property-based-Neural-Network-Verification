@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import joblib
-import numpy as np
 import property_driven_ml.training as pml_training
 import torch
 import yaml
@@ -49,13 +48,6 @@ def _unique_eval_names(paths: list[Path]) -> list[str]:
     return [cross_eval_name(path, used_names) for path in paths]
 
 
-def _baseline_loader(x: np.ndarray, y: np.ndarray, batch_size: int) -> DataLoader:
-    return DataLoader(
-        TensorDataset(torch.tensor(x).unsqueeze(1), torch.tensor(y)),
-        batch_size=batch_size,
-    )
-
-
 def _evaluate_baseline(run_dir: Path, payload: dict, config: dict, paths: list[Path]) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = payload["model"]
@@ -80,7 +72,10 @@ def _evaluate_baseline(run_dir: Path, payload: dict, config: dict, paths: list[P
         if payload["model_type"] == "random_forest":
             y_pred = model.predict(cross_eval.x)
         else:
-            loader = _baseline_loader(cross_eval.x, cross_eval.y, config["model"]["batch_size"])
+            loader = DataLoader(
+                TensorDataset(torch.tensor(cross_eval.x).unsqueeze(1), torch.tensor(cross_eval.y)),
+                batch_size=config["model"]["batch_size"],
+            )
             y_pred = predict_torch(model, loader, device)
 
         metrics, report_df, cm = classification_outputs(cross_eval.y, y_pred, labels)
