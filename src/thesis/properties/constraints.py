@@ -190,7 +190,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
     def round_ste(self, value):
         return value + (torch.round(value) - value).detach()
 
-    def consistent_adv(self, x, x_adv):
+    def recompute_portscan_features(self, x, x_adv):
         x_consistent = x_adv.clone()
         total_orig_pkts = self.raw_col(x[:, self.idx["total_orig_pkts"]], "total_orig_pkts")
         orig_pkts = self.raw_col(x[:, self.idx["orig_pkts"]], "orig_pkts")
@@ -215,7 +215,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
         return x_consistent
 
     def adv_values(self, x, x_adv):
-        x_consistent = self.consistent_adv(x, x_adv)
+        x_consistent = self.recompute_portscan_features(x, x_adv)
         uniq_dst_ports = self.round_ste(self.raw_col(x_consistent[:, self.idx["uniq_dst_ports"]], "uniq_dst_ports")).clamp_min(1.0)
         pkts_per_port = self.raw_col(x_consistent[:, self.idx["pkts_per_port"]], "pkts_per_port")
         scan_duration = self.raw_col(x_consistent[:, self.idx["scan_duration"]], "scan_duration")
@@ -223,7 +223,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
         return uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration
 
     def get_postcondition(self, N, x, x_adv):
-        x_consistent = self.consistent_adv(x, x_adv)
+        x_consistent = self.recompute_portscan_features(x, x_adv)
         uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
         scaled_uniq_dst_ports = self.scale_col(uniq_dst_ports, "uniq_dst_ports")
         scaled_fail_ratio = self.scale_col(fail_ratio, "fail_ratio")
@@ -256,7 +256,7 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
 
     @torch.no_grad()
     def debug_parts(self, N, x, x_adv):
-        x_consistent = self.consistent_adv(x, x_adv)
+        x_consistent = self.recompute_portscan_features(x, x_adv)
         uniq_dst_ports, fail_ratio, pkts_per_port, scan_duration = self.adv_values(x, x_adv)
         high_fail_ratio = fail_ratio >= self.portscan_specs["mal_fail_ratio_min"]
         low_pkts_per_port = pkts_per_port <= self.portscan_specs["mal_pkts_per_port_max"]

@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:v100:1
-#SBATCH --array=0-44
+#SBATCH --array=0-132
 
 
 export TMPDIR=/home/username/tmp
