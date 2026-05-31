@@ -20,16 +20,12 @@ DEBUG_LABEL_PORTSCAN = 2
 @dataclass
 class PropertyCrossEvalData:
     name: str
-    path: Path
-    df: pd.DataFrame
     loader: DataLoader
 
 
 @dataclass
 class PropertyData:
     train_df: pd.DataFrame
-    val_df: pd.DataFrame
-    test_df: pd.DataFrame
     train_loader: DataLoader
     val_loader: DataLoader
     test_loader: DataLoader
@@ -39,7 +35,6 @@ class PropertyData:
     model_feature_count: int
     labels: list[str]
     scaler: MinMaxScaler
-    attack_specs: dict
     scale_cols: list[str]
     clip_lower: pd.Series
     clip_upper: pd.Series
@@ -48,7 +43,6 @@ class PropertyData:
 @dataclass
 class BaselineCrossEvalData:
     name: str
-    path: Path
     x: np.ndarray
     y: np.ndarray
 
@@ -136,7 +130,6 @@ def transform_baseline_cross_eval(
     df[scale_cols] = scaler.transform(df[scale_cols])
     return BaselineCrossEvalData(
         name=path.stem,
-        path=path,
         x=df[features].to_numpy(dtype=np.float32),
         y=df["label_id"].to_numpy(dtype=np.int64),
     )
@@ -159,8 +152,6 @@ def transform_property_cross_eval(
     df[scale_cols] = scaler.transform(df[scale_cols])
     return PropertyCrossEvalData(
         name=path.stem,
-        path=path,
-        df=df,
         loader=make_loader(df, tensor_features, batch_size),
     )
 
@@ -170,17 +161,17 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
     train_df = data.train.copy()
     val_df = data.val.copy()
     test_df = data.test.copy()
-    cross_eval_dfs = [(cross_eval.name, cross_eval.path, cross_eval.frame.copy()) for cross_eval in data.cross_evals]
+    cross_eval_dfs = [(cross_eval.name, cross_eval.frame.copy()) for cross_eval in data.cross_evals]
     aux_cols = ["ts", "total_orig_pkts", "window_min_ts", "max_flow_end_without_current_row"]
     tensor_cols = feature_cols + [col for col in aux_cols if col not in feature_cols]
     scale_cols = [col for col in tensor_cols if col not in BOOLEAN_FEATURES]
 
-    frames = [train_df, val_df, test_df] + [df for _, _, df in cross_eval_dfs]
+    frames = [train_df, val_df, test_df] + [df for _, df in cross_eval_dfs]
     frames = [add_property_aux_columns(df) for df in frames]
     train_df, val_df, test_df = frames[:3]
     cross_eval_dfs = [
-        (name, path, df)
-        for (name, path, _), df in zip(cross_eval_dfs, frames[3:])
+        (name, df)
+        for (name, _), df in zip(cross_eval_dfs, frames[3:])
     ]
 
     for df in frames:
@@ -199,22 +190,18 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
     test_df[scale_cols] = scaler.transform(test_df[scale_cols])
 
     processed_cross_evals = []
-    for name, path, cross_eval_df in cross_eval_dfs:
+    for name, cross_eval_df in cross_eval_dfs:
         cross_eval_df[scale_cols] = cross_eval_df[scale_cols].clip(lower=clip_lower, upper=clip_upper, axis=1)
         cross_eval_df[scale_cols] = scaler.transform(cross_eval_df[scale_cols])
         processed_cross_evals.append(
             PropertyCrossEvalData(
                 name=name,
-                path=path,
-                df=cross_eval_df,
                 loader=make_loader(cross_eval_df, tensor_cols, batch_size),
             )
         )
 
     return PropertyData(
         train_df=train_df,
-        val_df=val_df,
-        test_df=test_df,
         train_loader=make_loader(train_df, tensor_cols, batch_size, shuffle=True),
         val_loader=make_loader(val_df, tensor_cols, batch_size),
         test_loader=make_loader(test_df, tensor_cols, batch_size),
@@ -224,7 +211,6 @@ def fit_property_data(data, config: dict, feature_cols: list[str]) -> PropertyDa
         model_feature_count=len(feature_cols),
         labels=config["data"]["labels"],
         scaler=scaler,
-        attack_specs=config["attack_specs"],
         scale_cols=scale_cols,
         clip_lower=clip_lower,
         clip_upper=clip_upper,
@@ -235,8 +221,8 @@ def fit_baseline_data(data, config: dict, feature_cols: list[str]) -> BaselineDa
     train_df = data.train.copy()
     val_df = data.val.copy()
     test_df = data.test.copy()
-    cross_eval_dfs = [(cross_eval.name, cross_eval.path, cross_eval.frame.copy()) for cross_eval in data.cross_evals]
-    frames = [train_df, val_df, test_df] + [df for _, _, df in cross_eval_dfs]
+    cross_eval_dfs = [(cross_eval.name, cross_eval.frame.copy()) for cross_eval in data.cross_evals]
+    frames = [train_df, val_df, test_df] + [df for _, df in cross_eval_dfs]
 
     scale_cols = [col for col in feature_cols if col not in BOOLEAN_FEATURES]
     for df in frames:
@@ -254,17 +240,16 @@ def fit_baseline_data(data, config: dict, feature_cols: list[str]) -> BaselineDa
     for df in frames[1:]:
         df[scale_cols] = scaler.transform(df[scale_cols])
     cross_eval_dfs = [
-        (name, path, df)
-        for (name, path, _), df in zip(cross_eval_dfs, frames[3:])
+        (name, df)
+        for (name, _), df in zip(cross_eval_dfs, frames[3:])
     ]
     processed_cross_evals = [
         BaselineCrossEvalData(
             name=name,
-            path=path,
             x=df[feature_cols].to_numpy(dtype=np.float32),
             y=df["label_id"].to_numpy(dtype=np.int64),
         )
-        for name, path, df in cross_eval_dfs
+        for name, df in cross_eval_dfs
     ]
 
     return BaselineData(

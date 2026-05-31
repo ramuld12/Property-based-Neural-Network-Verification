@@ -18,7 +18,6 @@ from thesis.data.features import (
 @dataclass
 class CrossEvalData:
     name: str
-    path: Path
     frame: pd.DataFrame
 
 
@@ -123,7 +122,6 @@ def load_experiment_data(config: dict) -> ExperimentData:
         cross_evals.append(
             CrossEvalData(
                 name=cross_eval_name(path, used_names) if len(paths) > 1 else "cross_eval",
-                path=path,
                 frame=prepare_features(prepare_labels(read_tsv(path), config), config).reset_index(drop=True),
             )
         )
