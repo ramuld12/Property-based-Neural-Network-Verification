@@ -52,10 +52,6 @@ def make_attack_label_df(df: pd.DataFrame, labels: list[str], attack_labels: lis
     return df
 
 
-def make_binary_attack_df(df: pd.DataFrame, attack_labels: list[str]) -> pd.DataFrame:
-    return make_attack_label_df(df, ["BENIGN", "ATTACK"], attack_labels)
-
-
 def compute_window_id(df: pd.DataFrame, window_seconds: float) -> pd.DataFrame:
     df = df.copy()
     df["ts"] = pd.to_numeric(df["ts"], errors="coerce").fillna(0.0)

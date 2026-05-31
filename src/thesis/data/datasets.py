@@ -84,10 +84,6 @@ def prepare_features(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     return compute_portscan_window_features(df)
 
 
-def group_labels(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
-    return df.groupby(group_cols, dropna=False, as_index=False)["label"].agg(lambda labels: labels.mode().iat[0])
-
-
 def split_experiment_frame(
     full_df: pd.DataFrame,
     config: dict,

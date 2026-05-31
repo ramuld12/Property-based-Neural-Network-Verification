@@ -46,10 +46,6 @@ def target_logit_wins(N, x, class_idx, model_feature_count):
     return target_logit >= max_other_logit
 
 
-def implies(logic, antecedent_violations, consequent):
-    return logic.OR(*antecedent_violations, consequent)
-
-
 class FixedAuxiliaryPrecondition:
     def __init__(self, precondition, auxiliary_indices):
         self.precondition = precondition
@@ -128,9 +124,8 @@ class DoSHttpFloodPostcondition(ScaledFeatureMixin, Postcondition):
         raw_orig_pkts = self.raw_col(x_adv[:, self.idx["orig_pkts"]], "orig_pkts").clamp_min(1e-8)
         orig_bytes_per_packet = raw_orig_bytes / raw_orig_pkts
         dos_logit, max_other_logit = target_logits(N, x_adv, self.class_idx, self.model_feature_count)
-        return lambda logic: implies(
-            logic,
-            [
+        return lambda logic: logic.OR(
+            *[
                 logic.LT(orig_bytes_per_packet, torch.full_like(orig_bytes_per_packet, self.dos_http_flood_specs["valid_packet_size_individual_min"])),
                 logic.LT(
                     scaled_orig_bytes,
@@ -235,9 +230,8 @@ class PortscanPostcondition(ScaledFeatureMixin, Postcondition):
         scaled_pkts_per_port = self.scale_col(pkts_per_port, "pkts_per_port")
         scaled_scan_duration = self.scale_col(scan_duration, "scan_duration")
         scan_logit, max_other_logit = target_logits(N, x_consistent, self.class_idx, self.model_feature_count)
-        return lambda logic: implies(
-            logic,
-            [
+        return lambda logic: logic.OR(
+            *[
                 logic.LT(
                     scaled_uniq_dst_ports,
                     self.scaled_threshold(scaled_uniq_dst_ports, self.portscan_specs["mal_uniq_dst_ports_min"], "uniq_dst_ports"),
